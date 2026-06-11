@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Match3 Pro</title>
+
+<style>
+body{
+  margin:0;
+  background:linear-gradient(135deg,#ffb6f0,#a0cfff);
+  text-align:center;
+  font-family:sans-serif;
+}
+canvas{
+  margin-top:20px;
+  background:rgba(255,255,255,0.2);
+  border-radius:20px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🍬 Match3 Pro</h2>
+<canvas id="game" width="300" height="300"></canvas>
+
+<script>
+const c=document.getElementById("game");
+const ctx=c.getContext("2d");
+
+const size=6, cell=50;
+
+// ===== 素材 =====
+const imgs={
+ red:new Image(), blue:new Image(),
+ green:new Image(), yellow:new Image(),
+ purple:new Image(), bomb:new Image()
+};
+
+imgs.red.src="assets/red.png";
+imgs.blue.src="assets/blue.png";
+imgs.green.src="assets/green.png";
+imgs.yellow.src="assets/yellow.png";
+imgs.purple.src="assets/purple.png";
+imgs.bomb.src="assets/bomb.png";
+
+const sound=new Audio("assets/pop.mp3");
+
+// ===== 状態 =====
+let board=[];
+let dragging=false;
+let selected=null;
+let offset={x:0,y:0};
+let anim=false;
+let particles=[];
+let shake=0;
+let combo=0;
+
+// ===== 初期化 =====
+function rand(){
+  return Math.random()<0.05?"bomb":
+    ["red","blue","green","yellow","purple"][Math.floor(Math.random()*5)];
+}
+
+function init(){
+  for(let y=0;y<size;y++){
+    board[y]=[];
+    for(let x=0;x<size;x++){
+      board[y][x]=rand();
+    }
+  }
+}
+
+// ===== 描画 =====
+function draw(){
+  ctx.clearRect(0,0,300,300);
+
+  ctx.save();
+
+  // シェイク
+  if(shake>0){
+    ctx.translate((Math.random()-0.5)*10,(Math.random()-0.5)*10);
+    shake--;
+  }
+
+  // ブロック
+  for(let y=0;y<size;y++){
+    for(let x=0;x<size;x++){
+
+      if(selected && selected.x===x && selected.y===y) continue;
+
+      let b=board[y][x];
+      if(!b) continue;
+
+      ctx.drawImage(imgs[b],x*cell+10,y*cell+10,40,40);
+    }
+  }
+
+  // ドラッグ中
+  if(selected){
+    let b=board[selected.y][selected.x];
+    ctx.drawImage(imgs[b],selected.px-20,selected.py-20,45,45);
+  }
+
+  // パーティクル
+  particles.forEach(p=>{
+    ctx.globalAlpha=p.life/30;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,3,0,Math.PI*2);
+    ctx.fill();
+
+    p.x+=p.vx;
+    p.y+=p.vy;
+    p.vy+=0.2;
+    p.life--;
+  });
+  ctx.globalAlpha=1;
+  particles=particles.filter(p=>p.life>0);
+
+  ctx.restore();
+}
+
+// ===== 交換 =====
+function swap(x1,y1,x2,y2){
+  let t=board[y1][x1];
+  board[y1][x1]=board[y2][x2];
+  board[y2][x2]=t;
+}
+
+// ===== マッチ =====
+function find(){
+  let res=[];
+  for(let y=0;y<size;y++){
+    let c=1;
+    for(let x=1;x<=size;x++){
+      if(x<size && board[y][x]===board[y][x-1]) c++;
+      else{
+        if(c>=3){
+          for(let k=0;k<c;k++) res.push({x:x-1-k,y});
+        }
+        c=1;
+      }
+    }
+  }
+  for(let x=0;x<size;x++){
+    let c=1;
+    for(let y=1;y<=size;y++){
+      if(y<size && board[y][x]===board[y-1][x]) c++;
+      else{
+        if(c>=3){
+          for(let k=0;k<c;k++) res.push({x,y:y-1-k});
+        }
+        c=1;
+      }
+    }
+  }
+  return res;
+}
+
+// ===== 消し演出 =====
+function explode(x,y){
+  for(let i=0;i<20;i++){
+    particles.push({
+      x:x*cell+30,
+      y:y*cell+30,
+      vx:(Math.random()-0.5)*5,
+      vy:(Math.random()-0.5)*5,
+      life:30,
+      color:"hsl("+Math.random()*360+",100%,70%)"
+    });
+  }
+}
+
+function remove(m){
+  m.forEach(p=>{
+    explode(p.x,p.y);
+
+    sound.currentTime=0;
+    sound.playbackRate=1+combo*0.1;
+    sound.play();
+
+    if(board[p.y][p.x]==="bomb"){
+      shake=20;
+      for(let dy=-1;dy<=1;dy++){
+        for(let dx=-1;dx<=1;dx++){
+          let nx=p.x+dx,ny=p.y+dy;
+          if(nx>=0&&ny>=0&&nx<size&&ny<size){
+            board[ny][nx]=null;
+          }
+        }
+      }
+    }
+
+    board[p.y][p.x]=null;
+  });
+}
+
+// ===== 落下アニメ =====
+function drop(){
+  for(let x=0;x<size;x++){
+    for(let y=size-1;y>=0;y--){
+      if(!board[y][x]){
+        for(let k=y-1;k>=0;k--){
+          if(board[k][x]){
+            board[y][x]=board[k][x];
+            board[k][x]=null;
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
+function fill(){
+  for(let y=0;y<size;y++){
+    for(let x=0;x<size;x++){
+      if(!board[y][x]) board[y][x]=rand();
+    }
+  }
+}
+
+// ===== 更新 =====
+function update(){
+  let m=find();
+
+  if(m.length){
+    combo++;
+    shake+=5;
+
+    remove(m);
+    drop();
+    fill();
+
+    setTimeout(update,200);
+  }else{
+    combo=0;
+  }
+}
+
+// ===== 操作（ドラッグ追従🔥）=====
+c.addEventListener("touchstart",e=>{
+  let r=c.getBoundingClientRect();
+  let t=e.touches[0];
+
+  let x=Math.floor((t.clientX-r.left)/cell);
+  let y=Math.floor((t.clientY-r.top)/cell);
+
+  selected={
+    x,y,
+    px:t.clientX-r.left,
+    py:t.clientY-r.top
+  };
+  dragging=true;
+});
+
+c.addEventListener("touchmove",e=>{
+  if(!dragging||!selected||anim)return;
+
+  let r=c.getBoundingClientRect();
+  let t=e.touches[0];
+
+  selected.px=t.clientX-r.left;
+  selected.py=t.clientY-r.top;
+
+  let x=Math.floor((t.clientX-r.left)/cell);
+  let y=Math.floor((t.clientY-r.top)/cell);
+
+  let dx=x-selected.x;
+  let dy=y-selected.y;
+
+  if(Math.abs(dx)+Math.abs(dy)===1){
+
+    swap(selected.x,selected.y,x,y);
+
+    if(find().length){
+      update();
+    }else{
+      setTimeout(()=>{
+        swap(selected.x,selected.y,x,y);
+      },100);
+    }
+
+    selected=null;
+    dragging=false;
+  }
+});
+
+c.addEventListener("touchend",()=>{
+  dragging=false;
+  selected=null;
+});
+
+// ===== ループ =====
+function loop(){
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ===== 実行 =====
+init();
+loop();
+
+</script>
+</body>
+</html>
