@@ -3,65 +3,146 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
-<title>Match3 Pro</title>
+<title>Match3 Ultimate</title>
 
 <style>
 body{
   margin:0;
+  font-family:sans-serif;
   background:linear-gradient(135deg,#ffb6f0,#a0cfff);
   text-align:center;
-  font-family:sans-serif;
 }
+
+/* ===== 画面 ===== */
+.screen{
+  display:none;
+}
+.active{
+  display:block;
+}
+
+/* ===== タイトル ===== */
+h1{
+  color:white;
+  margin:20px;
+}
+
+/* ===== UI ===== */
+.ui{
+  display:flex;
+  justify-content:space-between;
+  width:300px;
+  margin:0 auto;
+  color:white;
+  font-weight:bold;
+}
+
+/* ===== ボタン ===== */
+button{
+  padding:12px 20px;
+  border:none;
+  border-radius:10px;
+  font-size:16px;
+  margin:10px;
+}
+
+/* ===== キャンバス ===== */
 canvas{
-  margin-top:20px;
-  background:rgba(255,255,255,0.2);
+  margin-top:10px;
   border-radius:20px;
+  background:rgba(255,255,255,0.2);
+  touch-action: none;
+}
+
+/* ===== スコアぽよん ===== */
+.scorePop{
+  animation:pop 0.3s;
+}
+@keyframes pop{
+  0%{transform:scale(1);}
+  50%{transform:scale(1.4);}
+  100%{transform:scale(1);}
 }
 </style>
 </head>
 
 <body>
 
-<h2>🍬 Match3 Pro</h2>
-<canvas id="game" width="300" height="300"></canvas>
+<!-- ===== タイトル画面 ===== -->
+<div id="title" class="screen active">
+  <h1>🍬 Match3 Ultimate</h1>
+  <button onclick="startGame()">START</button>
+</div>
+
+<!-- ===== ゲーム画面 ===== -->
+<div id="gameScreen" class="screen">
+  <h1>🍬 Match3</h1>
+
+  <div class="ui">
+    <div id="score">0</div>
+    <div id="moves">30</div>
+  </div>
+  <div class="ui">
+    <div id="best">BEST:0</div>
+  </div>
+
+  <canvas id="game" width="300" height="300"></canvas>
+
+  <button onclick="toggleSkin()">スキン切替</button>
+</div>
+
+<!-- ===== ゲームオーバー ===== -->
+<div id="gameOver" class="screen">
+  <h1>GAME OVER</h1>
+  <div id="finalScore"></div>
+  <button onclick="location.reload()">RETRY</button>
+</div>
 
 <script>
-const c=document.getElementById("game");
-const ctx=c.getContext("2d");
-
-const size=6, cell=50;
-
 // ===== 素材 =====
-const imgs={
- red:new Image(), blue:new Image(),
- green:new Image(), yellow:new Image(),
- purple:new Image(), bomb:new Image()
+const skins = {
+  candy:{
+    red:"assets/red.png",
+    blue:"assets/blue.png",
+    green:"assets/green.png",
+    yellow:"assets/yellow.png",
+    purple:"assets/purple.png",
+    bomb:"assets/bomb.png"
+  }
 };
 
-imgs.red.src="assets/red.png";
-imgs.blue.src="assets/blue.png";
-imgs.green.src="assets/green.png";
-imgs.yellow.src="assets/yellow.png";
-imgs.purple.src="assets/purple.png";
-imgs.bomb.src="assets/bomb.png";
+let imgs={};
+function loadImages(callback){
+  let loaded = 0;
+  const keys = Object.keys(skins.candy);
+
+  keys.forEach(k=>{
+    imgs[k] = new Image();
+    imgs[k].src = skins.candy[k];
+
+    imgs[k].onload = ()=>{
+      loaded++;
+      if(loaded === keys.length) callback();
+    };
+  });
+}
 
 const sound=new Audio("assets/pop.mp3");
 
 // ===== 状態 =====
-let board=[];
-let dragging=false;
+const size=6, cell=50;
+let board=[], score=0, moves=30;
 let selected=null;
-let offset={x:0,y:0};
-let anim=false;
+let dragging=false;
+let swapAnim=null;
+let combo=0;
 let particles=[];
 let shake=0;
-let combo=0;
 
 // ===== 初期化 =====
 function rand(){
   return Math.random()<0.05?"bomb":
-    ["red","blue","green","yellow","purple"][Math.floor(Math.random()*5)];
+  ["red","blue","green","yellow","purple"][Math.floor(Math.random()*5)];
 }
 
 function init(){
@@ -74,131 +155,138 @@ function init(){
 }
 
 // ===== 描画 =====
+const c=document.getElementById("game");
+const ctx=c.getContext("2d");
+
 function draw(){
   ctx.clearRect(0,0,300,300);
-
   ctx.save();
 
   // シェイク
   if(shake>0){
-    ctx.translate((Math.random()-0.5)*10,(Math.random()-0.5)*10);
+    ctx.translate((Math.random()-0.5)*8,(Math.random()-0.5)*8);
     shake--;
   }
 
-  // ブロック
   for(let y=0;y<size;y++){
     for(let x=0;x<size;x++){
 
-      if(selected && selected.x===x && selected.y===y) continue;
+      let px=x*cell+10;
+      let py=y*cell+10;
+
+      // アニメ中なら位置補正
+      if(swapAnim){
+        let a=swapAnim;
+        let t=easeOut(a.progress);
+
+        if(x===a.x1 && y===a.y1){
+          px += (a.x2-a.x1)*cell*t;
+          py += (a.y2-a.y1)*cell*t;
+        }
+        if(x===a.x2 && y===a.y2){
+          px += (a.x1-a.x2)*cell*t;
+          py += (a.y1-a.y2)*cell*t;
+        }
+      }
 
       let b=board[y][x];
-      if(!b) continue;
-
-      ctx.drawImage(imgs[b],x*cell+10,y*cell+10,40,40);
+      if(b){
+        ctx.drawImage(imgs[b],px,py,40,40);
+      }
     }
   }
-
-  // ドラッグ中
-  if(selected){
-    let b=board[selected.y][selected.x];
-    ctx.drawImage(imgs[b],selected.px-20,selected.py-20,45,45);
-  }
-
-  // パーティクル
-  particles.forEach(p=>{
-    ctx.globalAlpha=p.life/30;
-    ctx.fillStyle=p.color;
-    ctx.beginPath();
-    ctx.arc(p.x,p.y,3,0,Math.PI*2);
-    ctx.fill();
-
-    p.x+=p.vx;
-    p.y+=p.vy;
-    p.vy+=0.2;
-    p.life--;
-  });
-  ctx.globalAlpha=1;
-  particles=particles.filter(p=>p.life>0);
 
   ctx.restore();
 }
 
-// ===== 交換 =====
-function swap(x1,y1,x2,y2){
-  let t=board[y1][x1];
-  board[y1][x1]=board[y2][x2];
-  board[y2][x2]=t;
+// ===== イージング =====
+function easeOut(t){
+  return 1-(1-t)*(1-t);
+}
+
+// ===== スワップアニメ =====
+function animateSwap(x1,y1,x2,y2,valid){
+  swapAnim={
+    x1,y1,x2,y2,
+    progress:0,
+    valid
+  };
+}
+
+// ===== 更新 =====
+function updateAnim(){
+  if(!swapAnim) return;
+
+  swapAnim.progress += 0.1;
+
+  if(swapAnim.progress>=1){
+
+    let a=swapAnim;
+
+    // 実際に交換
+    let t=board[a.y1][a.x1];
+    board[a.y1][a.x1]=board[a.y2][a.x2];
+    board[a.y2][a.x2]=t;
+
+    swapAnim=null;
+
+    // マッチ確認
+    if(find().length>0){
+      update();
+    }else if(a.valid){
+      // 失敗なら戻す
+      animateSwap(a.x2,a.y2,a.x1,a.y1,false);
+    }
+  }
 }
 
 // ===== マッチ =====
 function find(){
-  let res=[];
+  let r=[];
   for(let y=0;y<size;y++){
-    let c=1;
-    for(let x=1;x<=size;x++){
-      if(x<size && board[y][x]===board[y][x-1]) c++;
-      else{
-        if(c>=3){
-          for(let k=0;k<c;k++) res.push({x:x-1-k,y});
-        }
-        c=1;
+    for(let x=0;x<size-2;x++){
+      let c=board[y][x];
+      if(c && c===board[y][x+1] && c===board[y][x+2]){
+        r.push({x,y},{x:x+1,y},{x:x+2,y});
       }
     }
   }
   for(let x=0;x<size;x++){
-    let c=1;
-    for(let y=1;y<=size;y++){
-      if(y<size && board[y][x]===board[y-1][x]) c++;
-      else{
-        if(c>=3){
-          for(let k=0;k<c;k++) res.push({x,y:y-1-k});
-        }
-        c=1;
+    for(let y=0;y<size-2;y++){
+      let c=board[y][x];
+      if(c && c===board[y+1][x] && c===board[y+2][x]){
+        r.push({x,y},{x,y:y+1},{x,y:y+2});
       }
     }
   }
-  return res;
+  return r;
 }
 
-// ===== 消し演出 =====
-function explode(x,y){
-  for(let i=0;i<20;i++){
-    particles.push({
-      x:x*cell+30,
-      y:y*cell+30,
-      vx:(Math.random()-0.5)*5,
-      vy:(Math.random()-0.5)*5,
-      life:30,
-      color:"hsl("+Math.random()*360+",100%,70%)"
-    });
-  }
-}
-
+// ===== 消し =====
 function remove(m){
+  combo++;
+  shake+=5;
+
   m.forEach(p=>{
-    explode(p.x,p.y);
-
-    sound.currentTime=0;
-    sound.playbackRate=1+combo*0.1;
-    sound.play();
-
-    if(board[p.y][p.x]==="bomb"){
-      shake=20;
-      for(let dy=-1;dy<=1;dy++){
-        for(let dx=-1;dx<=1;dx++){
-          let nx=p.x+dx,ny=p.y+dy;
-          if(nx>=0&&ny>=0&&nx<size&&ny<size){
-            board[ny][nx]=null;
-          }
-        }
-      }
-    }
-
     board[p.y][p.x]=null;
+
+    // パーティクル
+    for(let i=0;i<10;i++){
+      particles.push({
+        x:p.x*cell+30,
+        y:p.y*cell+30,
+        vx:(Math.random()-0.5)*4,
+        vy:(Math.random()-0.5)*4,
+        life:30
+      });
+    }
   });
+
+  sound.currentTime=0;
+  sound.play();
 }
 
-// ===== 落下アニメ =====
+// ===== 落下 =====
 function drop(){
   for(let x=0;x<size;x++){
     for(let y=size-1;y>=0;y--){
@@ -215,6 +303,7 @@ function drop(){
   }
 }
 
+// ===== 補充 =====
 function fill(){
   for(let y=0;y<size;y++){
     for(let x=0;x<size;x++){
@@ -223,87 +312,110 @@ function fill(){
   }
 }
 
-// ===== 更新 =====
+// ===== ゲーム更新 =====
 function update(){
   let m=find();
-
   if(m.length){
-    combo++;
-    shake+=5;
-
     remove(m);
     drop();
     fill();
-
     setTimeout(update,200);
   }else{
     combo=0;
   }
 }
 
-// ===== 操作（ドラッグ追従🔥）=====
+// ===== 入力（PC+スマホ統合🔥）=====
+let start=null;
+
+function handleStart(x,y){
+  start={x,y};
+}
+
+function handleMove(x,y){
+  if(!start || swapAnim) return;
+
+  let dx=x-start.x;
+  let dy=y-start.y;
+
+  if(Math.abs(dx)+Math.abs(dy)===1){
+    animateSwap(start.x,start.y,x,y,true);
+    start=null;
+  }
+}
+
+// PC
+c.addEventListener("mousedown",e=>{
+  handleStart(
+    Math.floor(e.offsetX/cell),
+    Math.floor(e.offsetY/cell)
+  );
+});
+c.addEventListener("mousemove",e=>{
+  handleMove(
+    Math.floor(e.offsetX/cell),
+    Math.floor(e.offsetY/cell)
+  );
+});
+c.addEventListener("mouseup",()=>start=null);
+
+// スマホ
 c.addEventListener("touchstart",e=>{
   let r=c.getBoundingClientRect();
   let t=e.touches[0];
-
-  let x=Math.floor((t.clientX-r.left)/cell);
-  let y=Math.floor((t.clientY-r.top)/cell);
-
-  selected={
-    x,y,
-    px:t.clientX-r.left,
-    py:t.clientY-r.top
-  };
-  dragging=true;
+  handleStart(
+    Math.floor((t.clientX-r.left)/cell),
+    Math.floor((t.clientY-r.top)/cell)
+  );
 });
-
 c.addEventListener("touchmove",e=>{
-  if(!dragging||!selected||anim)return;
-
   let r=c.getBoundingClientRect();
   let t=e.touches[0];
-
-  selected.px=t.clientX-r.left;
-  selected.py=t.clientY-r.top;
-
-  let x=Math.floor((t.clientX-r.left)/cell);
-  let y=Math.floor((t.clientY-r.top)/cell);
-
-  let dx=x-selected.x;
-  let dy=y-selected.y;
-
-  if(Math.abs(dx)+Math.abs(dy)===1){
-
-    swap(selected.x,selected.y,x,y);
-
-    if(find().length){
-      update();
-    }else{
-      setTimeout(()=>{
-        swap(selected.x,selected.y,x,y);
-      },100);
-    }
-
-    selected=null;
-    dragging=false;
-  }
+  handleMove(
+    Math.floor((t.clientX-r.left)/cell),
+    Math.floor((t.clientY-r.top)/cell)
+  );
 });
-
-c.addEventListener("touchend",()=>{
-  dragging=false;
-  selected=null;
-});
+c.addEventListener("touchend",()=>start=null);
 
 // ===== ループ =====
 function loop(){
   draw();
+  updateAnim();
+
+  // パーティクル
+  particles.forEach(p=>{
+    p.x+=p.vx;
+    p.y+=p.vy;
+    p.vy+=0.2;
+    p.life--;
+  });
+  particles=particles.filter(p=>p.life>0);
+
   requestAnimationFrame(loop);
 }
 
-// ===== 実行 =====
-init();
-loop();
+function startGame(){
+  loadImages(()=>{
+    show("gameScreen");
+    init();
+
+    // 初回だけループ開始
+    if(!window.started){
+      loop();
+      window.started = true;
+    }
+  });
+}
+
+function show(id){
+  document.querySelectorAll(".screen").forEach(el=>{
+    el.classList.remove("active");
+  });
+  document.getElementById(id).classList.add("active");
+}
 
 </script>
+
 </body>
 </html>
