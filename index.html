@@ -8,26 +8,16 @@
 <style>
 body{
   margin:0;
-  font-family:sans-serif;
   background:linear-gradient(135deg,#ffb6f0,#a0cfff);
   text-align:center;
+  font-family:sans-serif;
 }
 
-/* ===== 画面 ===== */
-.screen{
-  display:none;
-}
-.active{
-  display:block;
-}
+.screen{ display:none; }
+.active{ display:block; }
 
-/* ===== タイトル ===== */
-h1{
-  color:white;
-  margin:20px;
-}
+h1{ color:white; }
 
-/* ===== UI ===== */
 .ui{
   display:flex;
   justify-content:space-between;
@@ -37,112 +27,67 @@ h1{
   font-weight:bold;
 }
 
-/* ===== ボタン ===== */
-button{
-  padding:12px 20px;
-  border:none;
-  border-radius:10px;
-  font-size:16px;
-  margin:10px;
-}
-
-/* ===== キャンバス ===== */
 canvas{
   margin-top:10px;
   border-radius:20px;
   background:rgba(255,255,255,0.2);
-  touch-action: none;
+  touch-action:none;
 }
 
-/* ===== スコアぽよん ===== */
-.scorePop{
-  animation:pop 0.3s;
-}
-@keyframes pop{
-  0%{transform:scale(1);}
-  50%{transform:scale(1.4);}
-  100%{transform:scale(1);}
+#combo{
+  color:white;
+  font-size:20px;
 }
 </style>
 </head>
 
 <body>
 
-<!-- ===== タイトル画面 ===== -->
 <div id="title" class="screen active">
   <h1>🍬 Match3 Ultimate</h1>
   <button onclick="startGame()">START</button>
 </div>
 
-<!-- ===== ゲーム画面 ===== -->
 <div id="gameScreen" class="screen">
   <h1>🍬 Match3</h1>
 
   <div class="ui">
-    <div id="score">0</div>
-    <div id="moves">30</div>
+    <div id="score">Score:0</div>
+    <div id="moves">Moves:30</div>
   </div>
-  <div class="ui">
-    <div id="best">BEST:0</div>
-  </div>
+  <div id="combo"></div>
 
   <canvas id="game" width="300" height="300"></canvas>
-
-  <button onclick="toggleSkin()">スキン切替</button>
-</div>
-
-<!-- ===== ゲームオーバー ===== -->
-<div id="gameOver" class="screen">
-  <h1>GAME OVER</h1>
-  <div id="finalScore"></div>
-  <button onclick="location.reload()">RETRY</button>
 </div>
 
 <script>
 // ===== 素材 =====
-const skins = {
-  candy:{
-    red:"assets/red.png",
-    blue:"assets/blue.png",
-    green:"assets/green.png",
-    yellow:"assets/yellow.png",
-    purple:"assets/purple.png",
-    bomb:"assets/bomb.png"
-  }
+const imgs={
+ red:new Image(),blue:new Image(),
+ green:new Image(),yellow:new Image(),
+ purple:new Image(),bomb:new Image()
 };
 
-let imgs={};
-function loadImages(callback){
-  let loaded = 0;
-  const keys = Object.keys(skins.candy);
-
-  keys.forEach(k=>{
-    imgs[k] = new Image();
-    imgs[k].src = skins.candy[k];
-
-    imgs[k].onload = ()=>{
-      loaded++;
-      if(loaded === keys.length) callback();
-    };
-  });
-}
+imgs.red.src="assets/red.png";
+imgs.blue.src="assets/blue.png";
+imgs.green.src="assets/green.png";
+imgs.yellow.src="assets/yellow.png";
+imgs.purple.src="assets/purple.png";
+imgs.bomb.src="assets/bomb.png";
 
 const sound=new Audio("assets/pop.mp3");
 
 // ===== 状態 =====
-const size=6, cell=50;
-let board=[], score=0, moves=30;
-let selected=null;
-let dragging=false;
-let swapAnim=null;
-let combo=0;
-let particles=[];
-let shake=0;
+const size=6,cell=50;
+const colors=["red","blue","green","yellow","purple"];
+
+let board=[],score=0,moves=30,combo=0;
+let swapAnim=null,fallAnim=[];
+let flash=0,shake=0;
 
 // ===== 初期化 =====
 function rand(){
-  return Math.random()<0.05?"bomb":
-  ["red","blue","green","yellow","purple"][Math.floor(Math.random()*5)];
+  return colors[Math.floor(Math.random()*colors.length)];
 }
 
 function init(){
@@ -160,6 +105,14 @@ const ctx=c.getContext("2d");
 
 function draw(){
   ctx.clearRect(0,0,300,300);
+
+  // フラッシュ
+  if(flash>0){
+    ctx.fillStyle="rgba(255,255,255,"+flash+")";
+    ctx.fillRect(0,0,300,300);
+    flash-=0.05;
+  }
+
   ctx.save();
 
   // シェイク
@@ -168,118 +121,128 @@ function draw(){
     shake--;
   }
 
+  // 落下描画
+  fallAnim.forEach(f=>{
+    let yPos=f.from+(f.to-f.from)*f.progress;
+    ctx.drawImage(
+      imgs[board[f.to][f.x]],
+      f.x*cell+10,
+      yPos*cell+10,
+      40,40
+    );
+  });
+
+  // 通常描画
   for(let y=0;y<size;y++){
     for(let x=0;x<size;x++){
 
-      let px=x*cell+10;
-      let py=y*cell+10;
+      if(fallAnim.some(f=>f.x===x&&f.to===y)) continue;
 
-      // アニメ中なら位置補正
+      let px=x*cell+10,py=y*cell+10;
+
       if(swapAnim){
         let a=swapAnim;
-        let t=easeOut(a.progress);
+        let t=1-(1-a.progress)**2;
 
-        if(x===a.x1 && y===a.y1){
-          px += (a.x2-a.x1)*cell*t;
-          py += (a.y2-a.y1)*cell*t;
+        if(x===a.x1&&y===a.y1){
+          px+=(a.x2-a.x1)*cell*t;
+          py+=(a.y2-a.y1)*cell*t;
         }
-        if(x===a.x2 && y===a.y2){
-          px += (a.x1-a.x2)*cell*t;
-          py += (a.y1-a.y2)*cell*t;
+        if(x===a.x2&&y===a.y2){
+          px+=(a.x1-a.x2)*cell*t;
+          py+=(a.y1-a.y2)*cell*t;
         }
       }
 
       let b=board[y][x];
-      if(b){
-        ctx.drawImage(imgs[b],px,py,40,40);
-      }
+      ctx.drawImage(imgs[b],px,py,40,40);
     }
   }
 
   ctx.restore();
 }
 
-// ===== イージング =====
-function easeOut(t){
-  return 1-(1-t)*(1-t);
-}
-
-// ===== スワップアニメ =====
+// ===== スワップ =====
 function animateSwap(x1,y1,x2,y2,valid){
-  swapAnim={
-    x1,y1,x2,y2,
-    progress:0,
-    valid
-  };
+  swapAnim={x1,y1,x2,y2,progress:0,valid};
 }
 
-// ===== 更新 =====
+// ===== アニメ更新 =====
 function updateAnim(){
-  if(!swapAnim) return;
+  if(swapAnim){
+    swapAnim.progress+=0.15;
 
-  swapAnim.progress += 0.1;
+    if(swapAnim.progress>=1){
+      let a=swapAnim;
 
-  if(swapAnim.progress>=1){
+      let t=board[a.y1][a.x1];
+      board[a.y1][a.x1]=board[a.y2][a.x2];
+      board[a.y2][a.x2]=t;
 
-    let a=swapAnim;
+      swapAnim=null;
 
-    // 実際に交換
-    let t=board[a.y1][a.x1];
-    board[a.y1][a.x1]=board[a.y2][a.x2];
-    board[a.y2][a.x2]=t;
-
-    swapAnim=null;
-
-    // マッチ確認
-    if(find().length>0){
-      update();
-    }else if(a.valid){
-      // 失敗なら戻す
-      animateSwap(a.x2,a.y2,a.x1,a.y1,false);
+      if(find().length){
+        moves--;
+        update();
+      }else if(a.valid){
+        animateSwap(a.x2,a.y2,a.x1,a.y1,false);
+      }
     }
   }
+
+  fallAnim.forEach(f=>f.progress+=0.1);
+  fallAnim=fallAnim.filter(f=>f.progress<1);
 }
 
 // ===== マッチ =====
 function find(){
-  let r=[];
+  let set=new Set();
+
   for(let y=0;y<size;y++){
-    for(let x=0;x<size-2;x++){
-      let c=board[y][x];
-      if(c && c===board[y][x+1] && c===board[y][x+2]){
-        r.push({x,y},{x:x+1,y},{x:x+2,y});
+    let count=1;
+    for(let x=1;x<=size;x++){
+      if(x<size && board[y][x]===board[y][x-1]) count++;
+      else{
+        if(count>=3){
+          for(let k=0;k<count;k++){
+            set.add(y*size+(x-1-k));
+          }
+        }
+        count=1;
       }
     }
   }
+
   for(let x=0;x<size;x++){
-    for(let y=0;y<size-2;y++){
-      let c=board[y][x];
-      if(c && c===board[y+1][x] && c===board[y+2][x]){
-        r.push({x,y},{x,y:y+1},{x,y:y+2});
+    let count=1;
+    for(let y=1;y<=size;y++){
+      if(y<size && board[y][x]===board[y-1][x]) count++;
+      else{
+        if(count>=3){
+          for(let k=0;k<count;k++){
+            set.add((y-1-k)*size+x);
+          }
+        }
+        count=1;
       }
     }
   }
-  return r;
+
+  return [...set].map(i=>({x:i%size,y:Math.floor(i/size)}));
 }
 
 // ===== 消し =====
 function remove(m){
   combo++;
-  shake+=5;
+  score+=m.length*10*combo;
+  flash=0.5;
+  shake=10;
+
+  document.getElementById("combo").innerText=
+    combo>1?combo+" COMBO!":"";
 
   m.forEach(p=>{
     board[p.y][p.x]=null;
-
-    // パーティクル
-    for(let i=0;i<10;i++){
-      particles.push({
-        x:p.x*cell+30,
-        y:p.y*cell+30,
-        vx:(Math.random()-0.5)*4,
-        vy:(Math.random()-0.5)*4,
-        life:30
-      });
-    }
   });
 
   sound.currentTime=0;
@@ -288,6 +251,8 @@ function remove(m){
 
 // ===== 落下 =====
 function drop(){
+  fallAnim=[];
+
   for(let x=0;x<size;x++){
     for(let y=size-1;y>=0;y--){
       if(!board[y][x]){
@@ -295,6 +260,8 @@ function drop(){
           if(board[k][x]){
             board[y][x]=board[k][x];
             board[k][x]=null;
+
+            fallAnim.push({x,from:k,to:y,progress:0});
             break;
           }
         }
@@ -312,9 +279,10 @@ function fill(){
   }
 }
 
-// ===== ゲーム更新 =====
+// ===== 更新 =====
 function update(){
   let m=find();
+
   if(m.length){
     remove(m);
     drop();
@@ -322,99 +290,46 @@ function update(){
     setTimeout(update,200);
   }else{
     combo=0;
+    if(moves<=0){
+      alert("GAME OVER\nScore:"+score);
+    }
   }
+
+  document.getElementById("score").innerText="Score:"+score;
+  document.getElementById("moves").innerText="Moves:"+moves;
 }
 
-// ===== 入力（PC+スマホ統合🔥）=====
+// ===== 入力 =====
 let start=null;
 
-function handleStart(x,y){
-  start={x,y};
-}
+c.onclick=e=>{
+  let x=Math.floor(e.offsetX/cell);
+  let y=Math.floor(e.offsetY/cell);
 
-function handleMove(x,y){
-  if(!start || swapAnim) return;
-
-  let dx=x-start.x;
-  let dy=y-start.y;
-
-  if(Math.abs(dx)+Math.abs(dy)===1){
-    animateSwap(start.x,start.y,x,y,true);
+  if(!start) start={x,y};
+  else{
+    if(Math.abs(x-start.x)+Math.abs(y-start.y)===1){
+      animateSwap(start.x,start.y,x,y,true);
+    }
     start=null;
   }
-}
-
-// PC
-c.addEventListener("mousedown",e=>{
-  handleStart(
-    Math.floor(e.offsetX/cell),
-    Math.floor(e.offsetY/cell)
-  );
-});
-c.addEventListener("mousemove",e=>{
-  handleMove(
-    Math.floor(e.offsetX/cell),
-    Math.floor(e.offsetY/cell)
-  );
-});
-c.addEventListener("mouseup",()=>start=null);
-
-// スマホ
-c.addEventListener("touchstart",e=>{
-  let r=c.getBoundingClientRect();
-  let t=e.touches[0];
-  handleStart(
-    Math.floor((t.clientX-r.left)/cell),
-    Math.floor((t.clientY-r.top)/cell)
-  );
-});
-c.addEventListener("touchmove",e=>{
-  let r=c.getBoundingClientRect();
-  let t=e.touches[0];
-  handleMove(
-    Math.floor((t.clientX-r.left)/cell),
-    Math.floor((t.clientY-r.top)/cell)
-  );
-});
-c.addEventListener("touchend",()=>start=null);
+};
 
 // ===== ループ =====
 function loop(){
   draw();
   updateAnim();
-
-  // パーティクル
-  particles.forEach(p=>{
-    p.x+=p.vx;
-    p.y+=p.vy;
-    p.vy+=0.2;
-    p.life--;
-  });
-  particles=particles.filter(p=>p.life>0);
-
   requestAnimationFrame(loop);
 }
 
+// ===== 起動 =====
 function startGame(){
-  loadImages(()=>{
-    show("gameScreen");
-    init();
+  document.getElementById("title").classList.remove("active");
+  document.getElementById("gameScreen").classList.add("active");
 
-    // 初回だけループ開始
-    if(!window.started){
-      loop();
-      window.started = true;
-    }
-  });
+  init();
+  loop();
 }
-
-function show(id){
-  document.querySelectorAll(".screen").forEach(el=>{
-    el.classList.remove("active");
-  });
-  document.getElementById(id).classList.add("active");
-}
-
 </script>
 
 </body>
