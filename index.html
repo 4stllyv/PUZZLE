@@ -8,15 +8,69 @@
 <style>
 body{
   margin:0;
+  height:100vh;
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+
   background:linear-gradient(135deg,#ffb6f0,#a0cfff);
   text-align:center;
   font-family:sans-serif;
 }
+/* タイトル画面 */
+#title{
+  height:100vh;
 
-.screen{ display:none; }
-.active{ display:block; }
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+}
 
-h1{ color:white; }
+#gameScreen{
+  flex-direction:column;
+  align-items:center;
+}
+
+
+.screen{
+  display:none;
+  position:absolute;   /* ✅ 追加 */
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+}
+
+.screen.active{
+  display:flex;        /* ✅ blockじゃなくflex */
+  justify-content:center;
+  align-items:center;
+}
+
+/* ❌ overlayからdisplay:flex削除 */
+.overlay{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.5);
+
+  justify-content:center;
+  align-items:center;
+}
+
+/* ✅ activeのときだけ表示 */
+.overlay.active{
+  display:flex;
+}
+
+h1{
+  color:white;
+  font-size:32px;
+  margin-bottom:20px;
+}
 
 .ui{
   display:flex;
@@ -30,14 +84,195 @@ h1{ color:white; }
 canvas{
   margin-top:10px;
   border-radius:20px;
-  background:rgba(255,255,255,0.2);
-  touch-action:none;
+  background:rgba(255,255,255,0.3);
+  backdrop-filter: blur(10px);
 }
 
 #combo{
   color:white;
   font-size:20px;
 }
+
+#gear{
+  position:absolute;
+  top:10px;
+  right:10px;
+  font-size:20px;
+}
+
+.box{
+  background:white;
+  padding:25px;
+  border-radius:15px;
+  width:260px;
+
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+/* タイトル */
+.box h2{
+  margin:0;
+}
+
+/* 説明 */
+.desc{
+  font-size:14px;
+  color:#555;
+  margin-bottom:10px;
+}
+
+/* メニューボタン */
+.menuBtn{
+  width:100%;
+  padding:12px;
+  font-size:16px;
+  border:none;
+  border-radius:12px;
+
+  background:linear-gradient(135deg,#6ea8ff,#9fd3ff);
+  color:white;
+
+  transition:0.2s;
+}
+
+/* 押したとき */
+.menuBtn:active{
+  transform:scale(0.95);
+}
+
+/* 戻るだけ色変える */
+.menuBtn.cancel{
+  background:#ddd;
+  color:black;
+}
+
+button{
+  padding:12px 24px;
+  border:none;
+  border-radius:20px;
+  margin:10px;
+  font-size:16px;
+
+  background:rgba(255,255,255,0.8);
+  backdrop-filter: blur(5px);
+
+  transition:0.2s;
+}
+
+button:active{
+  transform:scale(0.9);
+}
+
+/* リザルト画面 */
+#result{
+  justify-content:center;
+  align-items:center;
+}
+
+/* メインカード */
+.resultBox{
+  background:rgba(255,255,255,0.25);
+  backdrop-filter: blur(15px);
+
+  padding:40px;
+  border-radius:20px;
+  width:300px;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:15px;
+}
+
+#result.active{
+  display:flex;
+}
+
+/* スコア */
+.scoreText{
+  font-size:24px;
+  font-weight:bold;
+  color:white;
+}
+
+/* ランキング */
+.rankText{
+  color:white;
+  font-size:16px;
+  line-height:1.5;
+  text-align:center;
+}
+
+/* ボタン並び */
+.resultButtons{
+  display:flex;
+  gap:15px;
+}
+
+.resultBox h1{
+  font-size:36px;
+}
+
+.scoreText{
+  color:#fff;
+  text-shadow:0 0 10px rgba(255,255,255,0.8);
+}
+
+.resultButtons button{
+  border-radius:25px;
+  padding:10px 20px;
+}
+
+/* confirm専用 */
+.confirmBox{
+  width:260px;
+  padding:25px;
+  gap:20px;
+}
+
+/* テキスト余白調整 */
+.confirmBox .desc{
+  margin:0;
+  text-align:center;
+  line-height:1.6;
+}
+
+/* ボタン横並び */
+.confirmButtons{
+  display:flex;
+  gap:10px;
+  width:100%;
+}
+
+/* ベース */
+.btn{
+  flex:1;
+  padding:12px;
+  border:none;
+  border-radius:12px;
+  font-size:16px;
+  font-weight:bold;
+  transition:0.15s;
+}
+
+/* はい */
+.btn.yes{
+  background:linear-gradient(135deg,#ff6b6b,#ff9b9b);
+  color:white;
+}
+
+/* いいえ */
+.btn.no{
+  background:#ddd;
+}
+
+/* 押したとき */
+.btn:active{
+  transform:scale(0.9);
+}
+
 </style>
 </head>
 
@@ -57,16 +292,59 @@ canvas{
   </div>
   <div id="combo"></div>
 
+  <button id="gear" onclick="openMenu()">⚙</button>
+
   <canvas id="game" width="300" height="300"></canvas>
 </div>
 
-<div id="result" class="screen">
-  <h1>RESULT</h1>
-  <div id="final"></div>
-  <div id="rank"></div>
+<div id="menu" class="screen overlay">
+  <div class="box">
+    <h2>メニュー</h2>
 
-  <button onclick="retryGame()">RETRY</button>
-  <button onclick="goTitle()">タイトルへ</button>
+    <p class="desc">操作を選んでください</p>
+
+    <button class="menuBtn" onclick="confirmAction('retry')">
+      🔄 やり直す
+    </button>
+
+    <button class="menuBtn" onclick="confirmAction('title')">
+      🏠 タイトルへ
+    </button>
+
+    <button class="menuBtn cancel" onclick="show('gameScreen')">
+      ↩ 戻る
+    </button>
+  </div>
+</div>
+
+
+<!-- ✅ 外に出す -->
+<div id="confirm" class="screen overlay">
+  <div class="box confirmBox">
+    <h2>確認</h2>
+
+    <p id="confirmText" class="desc"></p>
+
+    <div class="confirmButtons">
+      <button class="btn yes" onclick="doAction()">はい</button>
+      <button class="btn no" onclick="backMenu()">いいえ</button>
+    </div>
+  </div>
+</div>
+
+<div id="result" class="screen">
+  <div class="resultBox">
+    <h1>RESULT</h1>
+
+    <div id="final" class="scoreText"></div>
+
+    <div id="rank" class="rankText"></div>
+
+    <div class="resultButtons">
+      <button onclick="retryGame()">RETRY</button>
+      <button onclick="goTitle()">タイトルへ</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -85,11 +363,11 @@ function startGame(){
   document.getElementById("moves").innerText = "Moves:30";
   document.getElementById("combo").innerText = "";
 
-  // ✅ 画面切り替え
-  show("gameScreen");
-
   // ✅ 盤面初期化
   init();
+
+  // ✅ 画面切り替え
+  show("gameScreen");
 
     
   if(!started){
@@ -127,9 +405,6 @@ function goTitle(){
   combo = 0;
   isGameOver = false;
 
-  // ✅ 盤面クリア（これ重要）
-  board = [];
-
   // ✅ UIリセット
   document.getElementById("score").innerText = "Score:0";
   document.getElementById("moves").innerText = "Moves:30";
@@ -137,6 +412,42 @@ function goTitle(){
 
   // ✅ タイトルへ
   show("title");
+}
+
+let tempAction = null;
+
+// 歯車→メニュー
+function openMenu(){
+  show("menu");
+}
+
+// 押した選択を保存
+function confirmAction(type){
+  tempAction = type;
+  show("confirm");
+}
+
+// 「いいえ」
+function backMenu(){
+  show("menu");
+}
+
+// 「はい」
+function doAction(){
+
+  console.log("実行:", tempAction); // ✅ デバッグ
+
+  if(tempAction === "retry"){
+    retryGame();
+    return;
+  }
+
+  if(tempAction === "title"){
+    goTitle();
+    return;
+  }
+
+  console.log("⚠ 未定義:", tempAction);
 }
 
 function show(id){
@@ -162,7 +473,7 @@ function gameOver(){
   localStorage.setItem("rank", JSON.stringify(r));
 
   document.getElementById("rank").innerText =
-    "TOP5: " + r.join(",");
+  "TOP5\n" + r.map((v,i)=> (i+1)+". "+v).join("\n");
 }
 
 // ===== 素材 =====
@@ -531,13 +842,24 @@ function loop(){
   requestAnimationFrame(loop);
 }
 
-// ===== 起動 =====
-function startGame(){
-  document.getElementById("title").classList.remove("active");
-  document.getElementById("gameScreen").classList.add("active");
+function confirmAction(type){
+  console.log("押された:", type); // ✅ デバッグ
 
-  init();
-  loop();
+  tempAction = type;
+
+  let text = "";
+
+  if(type === "retry"){
+    text = "現在のゲームをやり直します。\nよろしいですか？";
+  }
+
+  if(type === "title"){
+    text = "タイトルに戻ります。\n進行中のゲームは失われます。";
+  }
+
+  document.getElementById("confirmText").innerText = text;
+
+  show("confirm");
 }
 </script>
 
