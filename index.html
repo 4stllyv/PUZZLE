@@ -60,7 +60,111 @@ canvas{
   <canvas id="game" width="300" height="300"></canvas>
 </div>
 
+<div id="result" class="screen">
+  <h1>RESULT</h1>
+  <div id="final"></div>
+  <div id="rank"></div>
+
+  <button onclick="retryGame()">RETRY</button>
+  <button onclick="goTitle()">タイトルへ</button>
+</div>
+
 <script>
+let started = false;
+
+function startGame(){
+
+  // ✅ 状態リセット
+  score = 0;
+  moves = 30;
+  combo = 0;
+  isGameOver = false;
+
+  // ✅ UIリセット
+  document.getElementById("score").innerText = "Score:0";
+  document.getElementById("moves").innerText = "Moves:30";
+  document.getElementById("combo").innerText = "";
+
+  // ✅ 画面切り替え
+  show("gameScreen");
+
+  // ✅ 盤面初期化
+  init();
+
+    
+  if(!started){
+      loop();
+      started = true;
+    }
+}
+
+
+function retryGame(){
+
+  // ✅ 状態リセット
+  score = 0;
+  moves = 30;
+  combo = 0;
+  isGameOver = false;
+
+  // ✅ 盤面作り直し
+  init();
+
+  // ✅ UIリセット
+  document.getElementById("score").innerText = "Score:0";
+  document.getElementById("moves").innerText = "Moves:30";
+  document.getElementById("combo").innerText = "";
+
+  // ✅ ゲーム画面に戻る
+  show("gameScreen");
+}
+
+function goTitle(){
+
+  // ✅ 状態リセット
+  score = 0;
+  moves = 30;
+  combo = 0;
+  isGameOver = false;
+
+  // ✅ 盤面クリア（これ重要）
+  board = [];
+
+  // ✅ UIリセット
+  document.getElementById("score").innerText = "Score:0";
+  document.getElementById("moves").innerText = "Moves:30";
+  document.getElementById("combo").innerText = "";
+
+  // ✅ タイトルへ
+  show("title");
+}
+
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>{
+    s.classList.remove("active");
+  });
+  document.getElementById(id).classList.add("active");
+}
+
+function gameOver(){
+  isGameOver = true;
+
+  show("result");
+
+  document.getElementById("final").innerText =
+    "Score: " + score;
+
+  // ランキング
+  let r = JSON.parse(localStorage.getItem("rank") || "[]");
+  r.push(score);
+  r.sort((a,b)=>b-a);
+  r = r.slice(0,5);
+  localStorage.setItem("rank", JSON.stringify(r));
+
+  document.getElementById("rank").innerText =
+    "TOP5: " + r.join(",");
+}
+
 // ===== 素材 =====
 const imgs={
  red:new Image(),blue:new Image(),
@@ -279,7 +383,28 @@ function fill(){
   }
 }
 
+// ===== スワップ =====
+function swap(x1,y1,x2,y2){
+  let t = board[y1][x1];
+  board[y1][x1] = board[y2][x2];
+  board[y2][x2] = t;
+}
+
+// ===== 爆弾 =====
+function explode(x,y){
+  for(let dy=-1;dy<=1;dy++){
+    for(let dx=-1;dx<=1;dx++){
+      let nx=x+dx, ny=y+dy;
+      if(nx>=0 && ny>=0 && nx<size && ny<size){
+        board[ny][nx] = null;
+      }
+    }
+  }
+}
+
 // ===== 更新 =====
+let isGameOver = false;
+
 function update(){
   let m=find();
 
@@ -290,8 +415,9 @@ function update(){
     setTimeout(update,200);
   }else{
     combo=0;
-    if(moves<=0){
-      alert("GAME OVER\nScore:"+score);
+    if(moves <= 0){
+      gameOver();
+      return;
     }
   }
 
@@ -299,21 +425,104 @@ function update(){
   document.getElementById("moves").innerText="Moves:"+moves;
 }
 
-// ===== 入力 =====
-let start=null;
+// ---- PC ----
+let swipeStart = null;
 
-c.onclick=e=>{
-  let x=Math.floor(e.offsetX/cell);
-  let y=Math.floor(e.offsetY/cell);
+// --- PC ---
+c.addEventListener("mousedown", e=>{
+  if(isGameOver) return;
+  swipeStart = {
+    x: Math.floor(e.offsetX / cell),
+    y: Math.floor(e.offsetY / cell)
+  };
+});
 
-  if(!start) start={x,y};
-  else{
-    if(Math.abs(x-start.x)+Math.abs(y-start.y)===1){
-      animateSwap(start.x,start.y,x,y,true);
+c.addEventListener("mouseup", e=>{
+  if(!swipeStart) return;
+
+  let x = Math.floor(e.offsetX / cell);
+  let y = Math.floor(e.offsetY / cell);
+
+  let dx = x - swipeStart.x;
+  let dy = y - swipeStart.y;
+
+  if(Math.abs(dx)+Math.abs(dy)===1){
+
+    let x1 = swipeStart.x;
+    let y1 = swipeStart.y;
+
+    // ✅ 爆弾優先
+    if(board[y][x] === "bomb"){
+      explode(x,y);
+      update();
+    } else {
+
+      // ✅ 仮スワップ
+      swap(x1, y1, x, y);
+
+      // ✅ マッチチェック
+      if(find().length > 0){
+        moves--;
+        update();   // OKなら確定
+      } else {
+        // ❌ ダメなら戻す
+        swap(x1, y1, x, y);
+      }
+
     }
-    start=null;
   }
-};
+
+  swipeStart = null;
+});
+
+// --- スマホ ---
+c.addEventListener("touchstart", e=>{
+  if(isGameOver) return;
+  let r = c.getBoundingClientRect();
+  let t = e.touches[0];
+
+  swipeStart = {
+    x: Math.floor((t.clientX - r.left)/cell),
+    y: Math.floor((t.clientY - r.top)/cell)
+  };
+});
+
+c.addEventListener("touchend", e=>{
+  if(!swipeStart) return;
+
+  let r = c.getBoundingClientRect();
+  let t = e.changedTouches[0];
+
+  let x = Math.floor((t.clientX - r.left)/cell);
+  let y = Math.floor((t.clientY - r.top)/cell);
+
+  let dx = x - swipeStart.x;
+  let dy = y - swipeStart.y;
+
+  if(Math.abs(dx)+Math.abs(dy)===1){
+
+    let x1 = swipeStart.x;
+    let y1 = swipeStart.y;
+
+    if(board[y][x] === "bomb"){
+      explode(x,y);
+      update();
+    } else {
+
+      swap(x1, y1, x, y);
+
+      if(find().length > 0){
+        moves--;
+        update();
+      } else {
+        swap(x1, y1, x, y);
+      }
+    }
+  }
+
+  swipeStart = null;
+});
+
 
 // ===== ループ =====
 function loop(){
