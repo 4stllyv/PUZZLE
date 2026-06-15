@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Match3 Ultimate</title>
@@ -277,9 +279,14 @@ button:active{
 </head>
 
 <body>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
 <div id="title" class="screen active">
   <h1>PUZZLE GAME</h1>
+  <div id="globalRank"></div>
+
+  <input id="name" placeholder="名前を入力" maxlength="10">
   <button onclick="startGame()">START</button>
 </div>
 
@@ -348,9 +355,63 @@ button:active{
 </div>
 
 <script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCfDeRotfmLbzPxFOcb3pOIx41fUzofwR8",
+  authDomain: "puzzle-game-af891.firebaseapp.com",
+  databaseURL:"https://puzzle-game-af891-default-rtdb.firebaseio.com/",
+  projectId: "puzzle-game-af891",
+  storageBucket: "puzzle-game-af891.firebasestorage.app",
+  messagingSenderId: "57733853912",
+  appId: "1:57733853912:web:e42b7a96e50b9ca77d1dad",
+  measurementId: "G-1SSQNNMKC8"
+};
+
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+db.ref("scores").on("value", snapshot => {
+
+  let data = snapshot.val();
+
+  let text = "🌍 GLOBAL RANK\n";
+
+  if(!data){
+    text += "まだスコアなし";
+  } else {
+
+    let arr = Object.values(data);
+    arr.sort((a,b)=>b.score-a.score);
+
+    arr.slice(0,5).forEach((v,i)=>{
+    text += (i+1) + ". " + v.name + " : " + v.score + "\n";
+  });
+
+
+  }
+
+  document.getElementById("globalRank").innerText = text;
+});
+
+
 let started = false;
 
+let playerName = "";
+
 function startGame(){
+
+  
+  const name = document.getElementById("name").value.trim();
+
+  if(!name){
+    alert("名前を入力してください！");
+    return;
+  }
+
+  playerName = name;
+
+  localStorage.setItem("playerName", name);
+
 
   // ✅ 状態リセット
   score = 0;
@@ -465,15 +526,19 @@ function gameOver(){
   document.getElementById("final").innerText =
     "Score: " + score;
 
-  // ランキング
+  // ローカルランキング
   let r = JSON.parse(localStorage.getItem("rank") || "[]");
   r.push(score);
   r.sort((a,b)=>b-a);
   r = r.slice(0,5);
   localStorage.setItem("rank", JSON.stringify(r));
 
-  document.getElementById("rank").innerText =
-  "TOP5\n" + r.map((v,i)=> (i+1)+". "+v).join("\n");
+  // ✅ ここ追加！！
+  db.ref("scores").push({
+  name: playerName,
+  score: score,
+  time: Date.now()
+});
 }
 
 // ===== 素材 =====
@@ -496,6 +561,8 @@ const sound=new Audio("assets/pop.mp3");
 const size=6,cell=50;
 const colors=["red","blue","green","yellow","purple"];
 
+let comboTimer = 0;
+
 let board=[],score=0,moves=30,combo=0;
 let swapAnim=null,fallAnim=[];
 let flash=0,shake=0;
@@ -505,14 +572,70 @@ function rand(){
   return colors[Math.floor(Math.random()*colors.length)];
 }
 
-function init(){
+function hasMove(){
+
   for(let y=0;y<size;y++){
-    board[y]=[];
     for(let x=0;x<size;x++){
-      board[y][x]=rand();
+
+      // 右と入れ替え
+      if(x < size-1){
+        swap(x,y,x+1,y);
+        if(find().matches.length){
+          swap(x,y,x+1,y);
+          return true;
+        }
+        swap(x,y,x+1,y);
+      }
+
+      // 下と入れ替え
+      if(y < size-1){
+        swap(x,y,x,y+1);
+        if(find().matches.length){
+          swap(x,y,x,y+1);
+          return true;
+        }
+        swap(x,y,x,y+1);
+      }
+
     }
   }
+
+  return false;
 }
+
+function init(){
+
+  do{
+
+    board = [];
+
+    for(let y=0;y<size;y++){
+      board[y]=[];
+
+      for(let x=0;x<size;x++){
+
+        let c;
+
+        do{
+          c = rand();
+
+        }while(
+          x>=2 &&
+          board[y][x-1] === c &&
+          board[y][x-2] === c ||
+
+          y>=2 &&
+          board[y-1][x] === c &&
+          board[y-2][x] === c
+        );
+
+        board[y][x] = c;
+      }
+    }
+
+  } while(!hasMove()); // ✅ ここが神ポイント
+}
+
 
 // ===== 描画 =====
 const c=document.getElementById("game");
@@ -596,7 +719,7 @@ function updateAnim(){
 
       swapAnim=null;
 
-      if(find().length){
+      if(find().matches.length){
         moves--;
         update();
       }else if(a.valid){
@@ -611,79 +734,107 @@ function updateAnim(){
 
 // ===== マッチ =====
 function find(){
-  let set=new Set();
+  let matches = [];
+  let bombPos = null;
 
+  // 横
   for(let y=0;y<size;y++){
     let count=1;
     for(let x=1;x<=size;x++){
-      if(x<size && board[y][x]===board[y][x-1]) count++;
-      else{
+      if(x<size && board[y][x]===board[y][x-1]){
+        count++;
+      } else {
+
         if(count>=3){
           for(let k=0;k<count;k++){
-            set.add(y*size+(x-1-k));
+            matches.push({x:x-1-k,y});
           }
         }
+
+        // ✅ 5個以上なら爆弾位置記録
+        if(count>=5){
+          bombPos = {x:x-1,y};
+        }
+
         count=1;
       }
     }
   }
 
+  // 縦
   for(let x=0;x<size;x++){
     let count=1;
     for(let y=1;y<=size;y++){
-      if(y<size && board[y][x]===board[y-1][x]) count++;
-      else{
+      if(y<size && board[y][x]===board[y-1][x]){
+        count++;
+      } else {
+
         if(count>=3){
           for(let k=0;k<count;k++){
-            set.add((y-1-k)*size+x);
+            matches.push({x,y:y-1-k});
           }
         }
+
+        if(count>=5){
+          bombPos = {x,y:y-1};
+        }
+
         count=1;
       }
     }
   }
 
-  return [...set].map(i=>({x:i%size,y:Math.floor(i/size)}));
+  return {matches, bombPos};
 }
+
 
 // ===== 消し =====
-function remove(m){
-  combo++;
-  score+=m.length*10*combo;
-  flash=0.5;
-  shake=10;
+function remove(m, bombPos){
 
-  document.getElementById("combo").innerText=
-    combo>1?combo+" COMBO!":"";
+  combo++;
+  score += m.length * 10 * combo;
+
+  flash = 0.5;
+  shake = 10;
+
+  // ✅ コンボ表示
+  if(combo > 1){
+    document.getElementById("combo").innerText =
+      combo + " COMBO! 🔥";
+    
+    comboTimer = 120; // ✅ 約1秒表示（60フレーム）
+  }
 
   m.forEach(p=>{
-    board[p.y][p.x]=null;
+    board[p.y][p.x] = null;
   });
 
-  sound.currentTime=0;
-  sound.play();
+  if(bombPos){
+    board[bombPos.y][bombPos.x] = "bomb";
+  }
 }
+
+
 
 // ===== 落下 =====
 function drop(){
-  fallAnim=[];
 
   for(let x=0;x<size;x++){
-    for(let y=size-1;y>=0;y--){
-      if(!board[y][x]){
-        for(let k=y-1;k>=0;k--){
-          if(board[k][x]){
-            board[y][x]=board[k][x];
-            board[k][x]=null;
 
-            fallAnim.push({x,from:k,to:y,progress:0});
-            break;
-          }
-        }
+    let stack=[];
+
+    for(let y=size-1;y>=0;y--){
+      if(board[y][x] !== null){
+        stack.push(board[y][x]);
       }
+    }
+
+    for(let y=size-1;y>=0;y--){
+      board[y][x] = stack.shift() || null;
     }
   }
 }
+
 
 // ===== 補充 =====
 function fill(){
@@ -703,9 +854,11 @@ function swap(x1,y1,x2,y2){
 
 // ===== 爆弾 =====
 function explode(x,y){
-  for(let dy=-1;dy<=1;dy++){
-    for(let dx=-1;dx<=1;dx++){
-      let nx=x+dx, ny=y+dy;
+  for(let dy=-1; dy<=1; dy++){
+    for(let dx=-1; dx<=1; dx++){
+      let nx = x + dx;
+      let ny = y + dy;
+
       if(nx>=0 && ny>=0 && nx<size && ny<size){
         board[ny][nx] = null;
       }
@@ -717,17 +870,36 @@ function explode(x,y){
 let isGameOver = false;
 
 function update(){
-  let m=find();
+
+  // ✅ 手数0チェック
+  if(moves <= 0){
+    gameOver();
+    return;
+  }
+
+  let data = find();
+  let m = data.matches;
 
   if(m.length){
-    remove(m);
+
+    remove(m, data.bombPos);
+
     drop();
     fill();
     setTimeout(update,200);
-  }else{
-    combo=0;
-    if(moves <= 0){
-      gameOver();
+
+  } else {
+
+    combo = 0;
+
+    // ✅ 詰みチェックここ！！
+    if(!hasMove()){
+
+      // ✅ ここに入れる👇
+      do{
+        shuffle();
+      } while(!hasMove());
+
       return;
     }
   }
@@ -757,30 +929,34 @@ c.addEventListener("mouseup", e=>{
   let dx = x - swipeStart.x;
   let dy = y - swipeStart.y;
 
-  if(Math.abs(dx)+Math.abs(dy)===1){
+  // ✅ 爆弾タップ優先
+  if(dx===0 && dy===0){
+    if(board[y][x] === "bomb"){
+      moves--;
+      explode(x,y);
+      update();
+      swipeStart = null;
+      return;
+    }
+  }
 
+  // 通常スワップ
+  if(Math.abs(dx)+Math.abs(dy)===1){
     let x1 = swipeStart.x;
     let y1 = swipeStart.y;
 
-    // ✅ 爆弾優先
-    if(board[y][x] === "bomb"){
-      explode(x,y);
-      update();
-    } else {
+    swap(x1, y1, x, y);
 
-      // ✅ 仮スワップ
-      swap(x1, y1, x, y);
+    
+  let result = find();
 
-      // ✅ マッチチェック
-      if(find().length > 0){
-        moves--;
-        update();   // OKなら確定
-      } else {
-        // ❌ ダメなら戻す
-        swap(x1, y1, x, y);
-      }
+  if(result.matches.length > 0){
+    moves--;
+    update();
+  } else {
+    swap(x1, y1, x, y);
+  }
 
-    }
   }
 
   swipeStart = null;
@@ -810,11 +986,23 @@ c.addEventListener("touchend", e=>{
   let dx = x - swipeStart.x;
   let dy = y - swipeStart.y;
 
+  // ✅ 追加：その場タップ（爆弾発動）
+  if(dx === 0 && dy === 0){
+    if(board[y][x] === "bomb"){
+      explode(x,y);
+      update();
+      swipeStart = null;
+      return;
+    }
+  }
+
+  // ✅ 通常スワップ
   if(Math.abs(dx)+Math.abs(dy)===1){
 
     let x1 = swipeStart.x;
     let y1 = swipeStart.y;
 
+    // ✅ スワップ先が爆弾でも発動
     if(board[y][x] === "bomb"){
       explode(x,y);
       update();
@@ -822,12 +1010,16 @@ c.addEventListener("touchend", e=>{
 
       swap(x1, y1, x, y);
 
-      if(find().length > 0){
-        moves--;
-        update();
-      } else {
-        swap(x1, y1, x, y);
-      }
+      
+    let result = find();
+
+    if(result.matches.length > 0){
+      moves--;
+      update();
+    } else {
+      swap(x1, y1, x, y);
+    }
+
     }
   }
 
@@ -835,10 +1027,20 @@ c.addEventListener("touchend", e=>{
 });
 
 
+
 // ===== ループ =====
 function loop(){
+
   draw();
   updateAnim();
+
+  // ✅ タイマーで消す
+  if(comboTimer > 0){
+    comboTimer--;
+  } else {
+    document.getElementById("combo").innerText = "";
+  }
+
   requestAnimationFrame(loop);
 }
 
@@ -860,6 +1062,32 @@ function confirmAction(type){
   document.getElementById("confirmText").innerText = text;
 
   show("confirm");
+}
+
+function shuffle(){
+
+  let arr = [];
+
+  // ✅ 全部1次元に集める
+  for(let y=0;y<size;y++){
+    for(let x=0;x<size;x++){
+      arr.push(board[y][x]);
+    }
+  }
+
+  // ✅ シャッフル
+  for(let i=arr.length-1;i>0;i--){
+    let j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+
+  // ✅ 盤面に戻す
+  let i=0;
+  for(let y=0;y<size;y++){
+    for(let x=0;x<size;x++){
+      board[y][x] = arr[i++];
+    }
+  }
 }
 </script>
 
