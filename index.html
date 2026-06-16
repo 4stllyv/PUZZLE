@@ -19,7 +19,9 @@ body{
   background:linear-gradient(135deg,#ffb6f0,#a0cfff);
   text-align:center;
   font-family:sans-serif;
+  overflow: hidden;
   overscroll-behavior: none;
+
 }
 /* タイトル画面 */
 #title{
@@ -371,6 +373,12 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+
+
+document.body.addEventListener("touchmove", e => {
+  e.preventDefault();
+}, { passive: false });
+
 
 db.ref("scores").on("value", snapshot => {
 
