@@ -361,7 +361,7 @@ input {
 
   <button id="gear" onclick="openMenu()">⚙</button>
 
-  <canvas id="game" width="300" height="300"></canvas>
+  <canvas id="game"></canvas>
 </div>
 
 <div id="menu" class="screen overlay">
@@ -656,7 +656,8 @@ imgs.bomb.src="assets/bomb.png";
 const sound=new Audio("assets/pop.mp3");
 
 // ===== 状態 =====
-const size=6,cell=50;
+const size=8
+let cell=50;
 const colors=["red","blue","green","yellow","purple"];
 
 let comboTimer = 0;
@@ -739,13 +740,22 @@ function init(){
 const c=document.getElementById("game");
 const ctx=c.getContext("2d");
 
+
+const maxSize = Math.min(window.innerWidth, window.innerHeight) * 0.8;
+
+c.width = maxSize;
+c.height = maxSize;
+
+// ✅ 重要：cellをletにしておく！
+cell = Math.floor(c.width / size);
+
 function draw(){
-  ctx.clearRect(0,0,300,300);
+  ctx.clearRect(0, 0, c.width, c.height);
 
   // フラッシュ
   if(flash>0){
     ctx.fillStyle="rgba(255,255,255,"+flash+")";
-    ctx.fillRect(0,0,300,300);
+    ctx.fillRect(0,0,c.width,c.height);
     flash-=0.05;
   }
 
@@ -760,40 +770,54 @@ function draw(){
   // 落下描画
   fallAnim.forEach(f=>{
     let yPos=f.from+(f.to-f.from)*f.progress;
+    let size = (cell-10) * scale;
+    
     ctx.drawImage(
-      imgs[board[f.to][f.x]],
-      f.x*cell+10,
-      yPos*cell+10,
-      40,40
+      imgs[b],
+      px - (size - (cell-10))/2,
+      py - (size - (cell-10))/2,
+      size,
+      size
     );
+
   });
 
   // 通常描画
-  for(let y=0;y<size;y++){
-    for(let x=0;x<size;x++){
+  // 通常描画
+for(let y=0;y<size;y++){
+  for(let x=0;x<size;x++){
 
-      if(fallAnim.some(f=>f.x===x&&f.to===y)) continue;
+    if(fallAnim.some(f=>f.x===x&&f.to===y)) continue;
 
-      let px=x*cell+10,py=y*cell+10;
+    let b = board[y][x];
+    if(!b) continue;
 
-      if(swapAnim){
-        let a=swapAnim;
-        let t=1-(1-a.progress)**2;
+    // ✅ 基本サイズ
+    let baseSize = cell - 10;
+    let size2 = baseSize;
 
-        if(x===a.x1&&y===a.y1){
-          px+=(a.x2-a.x1)*cell*t;
-          py+=(a.y2-a.y1)*cell*t;
-        }
-        if(x===a.x2&&y===a.y2){
-          px+=(a.x1-a.x2)*cell*t;
-          py+=(a.y1-a.y2)*cell*t;
-        }
-      }
+    let px = x * cell + 10;
+    let py = y * cell + 10;
 
-      let b=board[y][x];
-      ctx.drawImage(imgs[b],px,py,40,40);
+    // ✅ ハイライト（光る＆拡大）
+    if(highlightTimer > 0 && highlight.some(p => p.x===x && p.y===y)){
+      size2 = baseSize * 1.2;
+
+      // ✅ 中心補正（超重要）
+      px -= (size2 - baseSize) / 2;
+      py -= (size2 - baseSize) / 2;
+
+      ctx.globalAlpha = 0.7;
     }
+
+    // ✅ 描画
+    ctx.drawImage(imgs[b], px, py, size2, size2);
+
+    // ✅ 必ず戻す！！
+    ctx.globalAlpha = 1;
   }
+}
+
 
   ctx.restore();
 }
@@ -892,7 +916,7 @@ function remove(m, bombPos){
   combo++;
   score += m.length * 10 * combo;
 
-  flash = 0.5;
+  flash = 0.8;
   shake = 10;
 
   // ✅ コンボ表示
@@ -967,9 +991,11 @@ function explode(x,y){
 // ===== 更新 =====
 let isGameOver = false;
 
+let highlight = [];
+let highlightTimer = 0;
+
 function update(){
 
-  // ✅ 手数0チェック
   if(moves <= 0){
     gameOver();
     return;
@@ -978,32 +1004,45 @@ function update(){
   let data = find();
   let m = data.matches;
 
-  if(m.length){
-
-    remove(m, data.bombPos);
-
-    drop();
-    fill();
-    setTimeout(update,200);
-
-  } else {
-
-    combo = 0;
-
-    // ✅ 詰みチェックここ！！
-    if(!hasMove()){
-
-      // ✅ ここに入れる👇
-      do{
-        shuffle();
-      } while(!hasMove());
-
-      return;
-    }
+  // ✅ ハイライト中は何もしない
+  if(highlightTimer > 0){
+    return;
   }
 
-  document.getElementById("score").innerText="Score:"+score;
-  document.getElementById("moves").innerText="Moves:"+moves;
+  // ✅ 新しくマッチ見つけた
+  if(m.length){
+
+    highlight = m;
+    highlightTimer = 8;
+
+    // ✅ removeは必ずここで1回だけ
+    setTimeout(() => {
+
+      remove(m, data.bombPos); // ←ここで確実にスコア加算
+      drop();
+      fill();
+
+      highlight = [];
+
+      update(); // 次の処理へ
+
+    }, 150);
+
+    return;
+  }
+
+  // ✅ マッチ無し
+  combo = 0;
+
+  if(!hasMove()){
+    do{
+      shuffle();
+    } while(!hasMove());
+    return;
+  }
+
+  document.getElementById("score").innerText = "Score:" + score;
+  document.getElementById("moves").innerText = "Moves:" + moves;
 }
 
 // ---- PC ----
@@ -1049,6 +1088,7 @@ c.addEventListener("mouseup", e=>{
   let result = find();
 
   if(result.matches.length > 0){
+    combo = 0;
     moves--;
     update();
   } else {
@@ -1104,6 +1144,7 @@ c.addEventListener("touchend", e=>{
 
     // ✅ スワップ先が爆弾でも発動
     if(board[y][x] === "bomb"){
+      combo = 0;
       explode(x,y);
       update();
     } else {
@@ -1133,6 +1174,15 @@ function loop(){
 
   draw();
   updateAnim();
+
+  
+  if(highlightTimer > 0){
+      highlightTimer--;
+    }else {
+      highlight = []; // ✅ 終わったら解除
+    }
+
+
 
   // ✅ タイマーで消す
   if(comboTimer > 0){
