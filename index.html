@@ -359,6 +359,25 @@ input {
   transform:scale(0.9);
 }
 
+@media (max-width: 600px){
+
+  
+  canvas{
+      margin-top: 100px;
+      max-width: 90vw;
+    }
+
+  
+  #gameScreen{
+      justify-content:flex-start;
+      padding-top:80px;
+    }
+
+
+
+}
+
+
 </style>
 </head>
 
@@ -769,7 +788,7 @@ const c=document.getElementById("game");
 const ctx=c.getContext("2d");
 
 
-const maxSize = Math.min(window.innerWidth, window.innerHeight) * 0.8;
+const maxSize = Math.min(window.innerWidth, window.innerHeight) * 0.65;
 
 c.width = maxSize;
 c.height = maxSize;
