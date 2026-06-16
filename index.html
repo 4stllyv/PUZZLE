@@ -16,7 +16,7 @@ body{
 
   display:flex;
   justify-content:center;
-  align-items:center;
+  align-items:flex-start;
 
   background:linear-gradient(135deg,#ffb6f0,#a0cfff);
   text-align:center;
@@ -83,14 +83,28 @@ h1{
 .ui{
   display:flex;
   justify-content:space-between;
-  width:300px;
-  margin:0 auto;
-  color:white;
+
+  width:100%;        /* ✅ 変更 */
+  padding:0 20px;    /* ✅ 少し余白 */
+  box-sizing: border-box;
+}
+
+
+#score, #moves{
+  font-size:22px;
   font-weight:bold;
+
+  color:#fff;
+
+  background: rgba(255,255,255,0.2);
+  padding:6px 12px;
+  border-radius:15px;
+
+  backdrop-filter: blur(5px);
 }
 
 canvas{
-  margin-top:10px;
+  margin-top: -20px;
   border-radius:20px;
   background:rgba(255,255,255,0.3);
   backdrop-filter: blur(10px);
@@ -98,8 +112,22 @@ canvas{
 }
 
 #combo{
+  position:absolute;
+  top:80px;
+  left:50%;
+  transform:translateX(-50%) scale(1);
+
   color:white;
-  font-size:20px;
+  font-size:24px;
+
+  animation: comboPop 0.4s ease;
+  pointer-events:none;
+}
+
+@keyframes comboPop{
+  0%{ transform:translateX(-50%) scale(0.5); opacity:0; }
+  50%{ transform:translateX(-50%) scale(1.3); opacity:1; }
+  100%{ transform:translateX(-50%) scale(1); opacity:1; }
 }
 
 #gear{
@@ -850,7 +878,7 @@ function updateAnim(){
     }
   }
 
-  fallAnim.forEach(f=>f.progress+=0.1);
+  fallAnim.forEach(f=>f.progress+=0.05);
   fallAnim=fallAnim.filter(f=>f.progress<1);
 }
 
@@ -1018,13 +1046,19 @@ function update(){
     // ✅ removeは必ずここで1回だけ
     setTimeout(() => {
 
-      remove(m, data.bombPos); // ←ここで確実にスコア加算
+      remove(m, data.bombPos);
+
+    setTimeout(() => {
+
       drop();
       fill();
 
-      highlight = [];
+      // ✅ 落ちた後にも待つ！
+      setTimeout(() => {
+        update();
+      }, 150);
 
-      update(); // 次の処理へ
+    }, 150);
 
     }, 150);
 
