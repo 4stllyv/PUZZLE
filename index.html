@@ -19,6 +19,7 @@ body{
   background:linear-gradient(135deg,#ffb6f0,#a0cfff);
   text-align:center;
   font-family:sans-serif;
+  overscroll-behavior: none;
 }
 /* タイトル画面 */
 #title{
@@ -88,6 +89,7 @@ canvas{
   border-radius:20px;
   background:rgba(255,255,255,0.3);
   backdrop-filter: blur(10px);
+  touch-action: none
 }
 
 #combo{
@@ -964,6 +966,7 @@ c.addEventListener("mouseup", e=>{
 
 // --- スマホ ---
 c.addEventListener("touchstart", e=>{
+  e.preventDefault();
   if(isGameOver) return;
   let r = c.getBoundingClientRect();
   let t = e.touches[0];
@@ -975,6 +978,7 @@ c.addEventListener("touchstart", e=>{
 });
 
 c.addEventListener("touchend", e=>{
+  e.preventDefault();
   if(!swipeStart) return;
 
   let r = c.getBoundingClientRect();
