@@ -373,9 +373,19 @@ input {
       justify-content:flex-start;
       padding-top:80px;
     }
+}
 
+.bomb {
+  animation: bombGlow 1s infinite alternate;
+}
 
-
+@keyframes bombGlow {
+  0% {
+    filter: drop-shadow(0 0 2px #fff) brightness(1);
+  }
+  100% {
+    filter: drop-shadow(0 0 12px #ffd700) brightness(1.5);
+  }
 }
 
 
@@ -880,8 +890,44 @@ for(let y=0;y<size;y++){
       ctx.globalAlpha = 0.7;
     }
 
-    // ✅ 描画
+    if(b === "bomb"){
     ctx.drawImage(imgs[b], px, py, size2, size2);
+
+    let cx = px + size2/2;
+    let cy = py + size2/2;
+
+    let t = Date.now() / 300;
+
+    let pulse = (Math.sin(t) + 1) / 2;
+    pulse = Math.pow(pulse, 2.5);
+
+    // ✅ サイズ控えめ
+    let glowSize = size2 + pulse * 4;
+
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+
+    let glow = ctx.createRadialGradient(
+      cx, cy, size2 * 0.2,
+      cx, cy, glowSize
+    );
+
+    // ✅ 明るさを大幅に抑える（ここがポイント）
+    glow.addColorStop(0, `rgba(255,255,220,${0.15 + pulse * 0.35})`);
+    glow.addColorStop(0.5, `rgba(255,220,120,${0.08 + pulse * 0.25})`);
+    glow.addColorStop(1, "rgba(255,200,0,0)");
+
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, glowSize, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+  }else{
+    ctx.drawImage(imgs[b], px, py, size2, size2);
+  }
+
 
     // ✅ 必ず戻す！！
     ctx.globalAlpha = 1;
@@ -901,6 +947,25 @@ for(let y=0;y<size;y++){
 
 
   ctx.restore();
+}
+
+function drawBomb(x, y, size){
+  
+  // 本体
+  ctx.fillStyle = "#000";
+  ctx.beginPath();
+  ctx.arc(x, y, size/2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ✅ 光エフェクト
+  let glow = ctx.createRadialGradient(x, y, 5, x, y, size);
+  glow.addColorStop(0, "rgba(255,255,200,0.9)");
+  glow.addColorStop(1, "rgba(255,200,0,0)");
+
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(x, y, size, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 // ===== スワップ =====
