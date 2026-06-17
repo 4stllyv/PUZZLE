@@ -475,7 +475,6 @@ input {
     </div>
   </div>
 
-  <div id="combo"></div>
 
   <button id="gear" onclick="openMenu()">⚙</button>
 
@@ -642,7 +641,6 @@ function startGame(){
   // ✅ UIリセット
   document.getElementById("scoreNum").innerText = "0";
   document.getElementById("movesNum").innerText = "30";
-  document.getElementById("combo").innerText = "";
 
   // ✅ 盤面初期化
   init();
@@ -676,7 +674,6 @@ function retryGame(){
   // ✅ UIリセット
   document.getElementById("scoreNum").innerText = "0";
   document.getElementById("movesNum").innerText = "30";
-  document.getElementById("combo").innerText = "";
 
   // ✅ ゲーム画面に戻る
   show("gameScreen");
@@ -697,7 +694,6 @@ function goTitle(){
   // ✅ UIリセット
   document.getElementById("scoreNum").innerText = "0";
   document.getElementById("movesNum").innerText = "30";
-  document.getElementById("combo").innerText = "";
 
   // ✅ タイトルへ
   show("title");
@@ -1008,9 +1004,23 @@ for(let y=0;y<size;y++){
 
   ctx.fillText("終了！", c.width/2, c.height/2);
 }
+
+// ✅ コンボ表示（ここに追加！）
+if(combo > 1 && comboTimer > 0){
+
+  let offset = (c.width - cell * size) / 2;
+
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 24px sans-serif";
+  ctx.textAlign = "center";
+
+  let x = comboX * cell + offset + cell/2;
+  let y = comboY * cell + offset - 10;
+
+  ctx.fillText(combo + " COMBO!", x, y);
 }
-
-
+}
   ctx.restore();
 }
 
@@ -1153,19 +1163,34 @@ function find(){
 
 
 // ===== 消し =====
+let comboX = 0;
+let comboY = 0;
+
 function remove(m, bombPos){
 
   combo++;
-  score += m.length * 10 * combo;
+
+  if(combo > 1){
+  comboTimer = 120;
+  }
+
+  let sumX = 0;
+  let sumY = 0;
+
+  
+  m.forEach(p=>{
+      sumX += p.x;
+      sumY += p.y;
+    });
+
+    comboX = sumX / m.length;
+    comboY = sumY / m.length;
+
+    score += m.length * 10 * combo;
+
 
   flash = 0.8;
   shake = 10;
-
-  if(combo > 1){
-    document.getElementById("combo").innerText =
-      combo + " COMBO! 🔥";
-    comboTimer = 120;
-  }
 
   // ✅ まず全部消す
   m.forEach(p=>{
@@ -1378,17 +1403,25 @@ let swipeStart = null;
 // --- PC ---
 c.addEventListener("mousedown", e=>{
   if(isGameOver || isBusy) return;
-  swipeStart = {
-    x: Math.floor(e.offsetX / cell),
-    y: Math.floor(e.offsetY / cell)
-  };
+
+  let offset = (c.width - cell * size) / 2;
+
+  let x = Math.floor((e.offsetX - offset) / cell);
+  let y = Math.floor((e.offsetY - offset) / cell);
+
+  // 範囲外防止（おすすめ）
+  if(x < 0 || y < 0 || x >= size || y >= size) return;
+
+  swipeStart = { x, y };
 });
 
 c.addEventListener("mouseup", e=>{
   if(!swipeStart) return;
 
-  let x = Math.floor(e.offsetX / cell);
-  let y = Math.floor(e.offsetY / cell);
+  let offset = (c.width - cell * size) / 2;
+
+  let x = Math.floor((e.offsetX - offset) / cell);
+  let y = Math.floor((e.offsetY - offset) / cell);
 
   let dx = x - swipeStart.x;
   let dy = y - swipeStart.y;
@@ -1431,14 +1464,20 @@ c.addEventListener("mouseup", e=>{
 c.addEventListener("touchstart", e=>{
   e.preventDefault();
   if(isGameOver || isBusy) return;
+
   let r = c.getBoundingClientRect();
   let t = e.touches[0];
 
-  swipeStart = {
-    x: Math.floor((t.clientX - r.left)/cell),
-    y: Math.floor((t.clientY - r.top)/cell)
-  };
+  let offset = (c.width - cell * size) / 2;
+
+  let x = Math.floor((t.clientX - r.left - offset) / cell);
+  let y = Math.floor((t.clientY - r.top - offset) / cell);
+
+  if(x < 0 || y < 0 || x >= size || y >= size) return;
+
+  swipeStart = { x, y };
 });
+
 
 c.addEventListener("touchend", e=>{
   e.preventDefault();
@@ -1447,8 +1486,10 @@ c.addEventListener("touchend", e=>{
   let r = c.getBoundingClientRect();
   let t = e.changedTouches[0];
 
-  let x = Math.floor((t.clientX - r.left)/cell);
-  let y = Math.floor((t.clientY - r.top)/cell);
+  let offset = (c.width - cell * size) / 2;
+
+  let x = Math.floor((t.clientX - r.left - offset) / cell);
+  let y = Math.floor((t.clientY - r.top - offset) / cell);
 
   let dx = x - swipeStart.x;
   let dy = y - swipeStart.y;
@@ -1509,14 +1550,6 @@ function loop(){
       highlight = []; // ✅ 終わったら解除
     }
 
-
-
-  // ✅ タイマーで消す
-  if(comboTimer > 0){
-    comboTimer--;
-  } else {
-    document.getElementById("combo").innerText = "";
-  }
 
   requestAnimationFrame(loop);
 }
