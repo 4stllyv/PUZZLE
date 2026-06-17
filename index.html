@@ -1155,6 +1155,7 @@ let isGameOver = false;
 let highlight = [];
 let highlightTimer = 0;
 let ending = false; // ✅ 終了待ち状態
+let isBusy = false;
 
 function update(){
 
@@ -1176,6 +1177,8 @@ function update(){
 
   // ✅ 新しくマッチ見つけた
   if(m.length){
+
+    isBusy = true;
 
     highlight = m;
     highlightTimer = 8;
@@ -1204,6 +1207,7 @@ function update(){
         // ✅ 完全に終わってから次
         setTimeout(() => {
           update();
+          isBusy = false;
         }, 200);
 
       }, 200);
@@ -1243,7 +1247,7 @@ let swipeStart = null;
 
 // --- PC ---
 c.addEventListener("mousedown", e=>{
-  if(isGameOver) return;
+  if(isGameOver || isBusy) return;
   swipeStart = {
     x: Math.floor(e.offsetX / cell),
     y: Math.floor(e.offsetY / cell)
@@ -1296,7 +1300,7 @@ c.addEventListener("mouseup", e=>{
 // --- スマホ ---
 c.addEventListener("touchstart", e=>{
   e.preventDefault();
-  if(isGameOver) return;
+  if(isGameOver || isBusy) return;
   let r = c.getBoundingClientRect();
   let t = e.touches[0];
 
@@ -1308,7 +1312,7 @@ c.addEventListener("touchstart", e=>{
 
 c.addEventListener("touchend", e=>{
   e.preventDefault();
-  if(!swipeStart) return;
+  if(!swipeStart || isBusy) return;
 
   let r = c.getBoundingClientRect();
   let t = e.changedTouches[0];
