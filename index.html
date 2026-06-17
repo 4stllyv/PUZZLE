@@ -83,29 +83,48 @@ h1{
 
 .ui{
   display:flex;
-  justify-content:space-between;
+  align-items:center;
 
-  width:100%;        /* ✅ 変更 */
-  padding:0 20px;    /* ✅ 少し余白 */
-  box-sizing: border-box;
+  width:90%;
+  max-width:800px;
+  margin:20px auto;
+
+  gap:15px;
+
+  justify-content:center; /* ✅ スマホ用（中央寄せ） */
 }
 
+/* カード */
+.card{
+  flex:1;
 
-#score, #moves{
-  font-size:22px;
+  padding:12px 10px;
+
+  border-radius:16px;
+
+  background:linear-gradient(135deg,#5aa7ff,#6ed0ff);
+
+  color:white;
+  text-align:center;
+
+  box-shadow:0 6px 15px rgba(0,0,0,0.15);
+}
+
+/* 上のラベル */
+.label{
+  font-size:13px;
+  opacity:0.8;
+  margin-bottom:4px;
+}
+
+/* 数字メイン */
+.value{
+  font-size:24px;
   font-weight:bold;
-
-  color:#fff;
-
-  background: rgba(255,255,255,0.2);
-  padding:6px 12px;
-  border-radius:15px;
-
-  backdrop-filter: blur(5px);
 }
 
 canvas{
-  margin-top: -20px;
+  margin-top:-70px;
   border-radius:20px;
   background:rgba(255,255,255,0.3);
   backdrop-filter: blur(10px);
@@ -360,6 +379,28 @@ input {
   transform:scale(0.9);
 }
 
+@media (min-width:768px){
+
+  .ui{
+    width:100%;
+    max-width:none;
+
+    display:flex;
+    justify-content:space-between; /* ←左右に分離 */
+
+    padding:0 40px;
+    box-sizing:border-box;
+  }
+
+  .card{
+    flex:none;        /* ←これ超重要！ */
+    width:220px;
+
+  }
+
+}
+
+/* スマホ */
 @media (max-width: 600px){
 
   
@@ -389,6 +430,17 @@ input {
 }
 
 
+.ui{
+    margin-top:10px;
+    margin-bottom:5px;
+  }
+
+  .value{
+    font-size:22px;
+  }
+
+
+
 </style>
 </head>
 
@@ -412,9 +464,17 @@ input {
   <h1>動物パズル</h1>
 
   <div class="ui">
-    <div id="score">スコア:0</div>
-    <div id="moves">残り回数:30</div>
+    <div class="card">
+      <div class="label">スコア</div>
+      <div id="scoreNum" class="value">0</div>
+    </div>
+
+    <div class="card">
+      <div class="label">残り回数</div>
+      <div id="movesNum" class="value">30</div>
+    </div>
   </div>
+
   <div id="combo"></div>
 
   <button id="gear" onclick="openMenu()">⚙</button>
@@ -580,8 +640,8 @@ function startGame(){
   isGameOver = false;
 
   // ✅ UIリセット
-  document.getElementById("score").innerText = "スコア:0";
-  document.getElementById("moves").innerText = "残り回数:30";
+  document.getElementById("scoreNum").innerText = "0";
+  document.getElementById("movesNum").innerText = "30";
   document.getElementById("combo").innerText = "";
 
   // ✅ 盤面初期化
@@ -614,8 +674,8 @@ function retryGame(){
   init();
 
   // ✅ UIリセット
-  document.getElementById("score").innerText = "スコア:0";
-  document.getElementById("moves").innerText = "残り回数:30";
+  document.getElementById("scoreNum").innerText = "0";
+  document.getElementById("movesNum").innerText = "30";
   document.getElementById("combo").innerText = "";
 
   // ✅ ゲーム画面に戻る
@@ -635,8 +695,8 @@ function goTitle(){
   isGameOver = false;
 
   // ✅ UIリセット
-  document.getElementById("score").innerText = "スコア:0";
-  document.getElementById("moves").innerText = "残り回数:30";
+  document.getElementById("scoreNum").innerText = "0";
+  document.getElementById("movesNum").innerText = "30";
   document.getElementById("combo").innerText = "";
 
   // ✅ タイトルへ
@@ -819,10 +879,11 @@ const c=document.getElementById("game");
 const ctx=c.getContext("2d");
 
 
-const topUI = 200; // ✅ 上のUI高さ（調整OK）
+const topUI = 180; // ✅ 上のUI高さ（調整OK）
 
 const maxSize = Math.min(
-  window.innerWidth * 0.95,
+  500,
+  window.innerWidth * 0.9,
   window.innerHeight - topUI
 );
 
@@ -831,6 +892,8 @@ c.height = maxSize;
 
 // ✅ 重要：cellをletにしておく！
 cell = Math.floor(c.width / size);
+c.width = cell * size;
+c.height = cell * size;
 
 function draw(){
   ctx.clearRect(0, 0, c.width, c.height);
@@ -876,8 +939,10 @@ for(let y=0;y<size;y++){
     let baseSize = cell - 4;
     let size2 = baseSize;
 
-    let px = x * cell + 10;
-    let py = y * cell + 10;
+    let offset = (c.width - cell * size) / 2;
+
+    let px = x * cell + offset;
+    let py = y * cell + offset;
 
     // ✅ ハイライト（光る＆拡大）
     if(highlightTimer > 0 && highlight.some(p => p.x===x && p.y===y)){
@@ -1303,8 +1368,8 @@ function update(){
   }
 
 
-  document.getElementById("score").innerText = "スコア:" + score;
-  document.getElementById("moves").innerText = "残り回数:" + moves;
+  document.getElementById("scoreNum").innerText = score;
+  document.getElementById("movesNum").innerText = moves;
 }
 
 // ---- PC ----
