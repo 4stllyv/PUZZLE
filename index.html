@@ -5,7 +5,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>PUZZLE GAME</title>
+<title>動物パズル</title>
 <link rel="manifest" href="manifest.json">
 
 
@@ -384,13 +384,13 @@ input {
 
 <body>
 <div id="splash">
-  <div class="logo">PUZZLE GAME</div>
+  <div class="logo">動物パズル</div>
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
 <div id="title" class="screen active">
-  <h1>PUZZLE GAME</h1>
+  <h1>動物パズル</h1>
   <div id="globalRank"></div>
 
   <input id="name" placeholder="名前を入力" maxlength="10">
@@ -399,11 +399,11 @@ input {
 
 <div id="gameScreen" class="screen">
   <button id="help" onclick="show('rules')">❓</button>
-  <h1>PUZZLE GAME</h1>
+  <h1>動物パズル</h1>
 
   <div class="ui">
-    <div id="score">Score:0</div>
-    <div id="moves">Moves:30</div>
+    <div id="score">スコア:0</div>
+    <div id="moves">残り回数:30</div>
   </div>
   <div id="combo"></div>
 
@@ -470,8 +470,8 @@ input {
       同じ動物を3つ以上そろえて消そう！<br><br>
 
       ・3つ以上 → 消える<br>
-      ・5つ以上 → 💣爆弾出現<br>
-      ・爆弾 → 周りを消す<br><br>
+      ・5つ以上 → 🦍爆弾出現<br>
+      ・🦍爆弾 → 周りを消す<br><br>
 
       手数が0になるとゲーム終了！
     </p>
@@ -520,7 +520,7 @@ db.ref("scores").on("value", snapshot => {
 
   let data = snapshot.val();
 
-  let text = "🌍 GLOBAL RANK\n";
+  let text = "🌍 世界ランク\n";
 
   if(!data){
     text += "まだスコアなし";
@@ -570,8 +570,8 @@ function startGame(){
   isGameOver = false;
 
   // ✅ UIリセット
-  document.getElementById("score").innerText = "Score:0";
-  document.getElementById("moves").innerText = "Moves:30";
+  document.getElementById("score").innerText = "スコア:0";
+  document.getElementById("moves").innerText = "残り回数:30";
   document.getElementById("combo").innerText = "";
 
   // ✅ 盤面初期化
@@ -604,8 +604,8 @@ function retryGame(){
   init();
 
   // ✅ UIリセット
-  document.getElementById("score").innerText = "Score:0";
-  document.getElementById("moves").innerText = "Moves:30";
+  document.getElementById("score").innerText = "スコア:0";
+  document.getElementById("moves").innerText = "残り回数:30";
   document.getElementById("combo").innerText = "";
 
   // ✅ ゲーム画面に戻る
@@ -625,8 +625,8 @@ function goTitle(){
   isGameOver = false;
 
   // ✅ UIリセット
-  document.getElementById("score").innerText = "Score:0";
-  document.getElementById("moves").innerText = "Moves:30";
+  document.getElementById("score").innerText = "スコア:0";
+  document.getElementById("moves").innerText = "残り回数:30";
   document.getElementById("combo").innerText = "";
 
   // ✅ タイトルへ
@@ -1238,8 +1238,8 @@ function update(){
   }
 
 
-  document.getElementById("score").innerText = "Score:" + score;
-  document.getElementById("moves").innerText = "Moves:" + moves;
+  document.getElementById("score").innerText = "スコア:" + score;
+  document.getElementById("moves").innerText = "残り回数:" + moves;
 }
 
 // ---- PC ----
