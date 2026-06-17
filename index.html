@@ -467,7 +467,7 @@ input {
     <h2>遊び方</h2>
 
     <p class="desc">
-      同じ色を3つ以上そろえて消そう！<br><br>
+      同じ動物を3つ以上そろえて消そう！<br><br>
 
       ・3つ以上 → 消える<br>
       ・5つ以上 → 💣爆弾出現<br>
@@ -842,17 +842,14 @@ function draw(){
 
   // 落下描画
   fallAnim.forEach(f=>{
-    let yPos=f.from+(f.to-f.from)*f.progress;
-    let size = (cell-10) * scale;
-    
-    ctx.drawImage(
-      imgs[b],
-      px - (size - (cell-10))/2,
-      py - (size - (cell-10))/2,
-      size,
-      size
-    );
+  let yPos = f.from + (f.to - f.from) * f.progress;
 
+  let px = f.x * cell + 10;
+  let py = yPos * cell + 10;
+
+  let b = f.type;
+
+  ctx.drawImage(imgs[b], px, py, cell-4, cell-4);
   });
 
   // 通常描画
@@ -940,58 +937,89 @@ function updateAnim(){
 
 // ===== マッチ =====
 function find(){
+
   let matches = [];
-  let bombPos = null;
+  let bombPos = [];
+  let map = {};
 
-  // 横
+  // ===== 横 =====
   for(let y=0;y<size;y++){
-    let count=1;
+    let count = 1;
+
     for(let x=1;x<=size;x++){
-      if(x<size && board[y][x]===board[y][x-1]){
+
+      if(x<size && board[y][x] === board[y][x-1]){
         count++;
       } else {
 
-        if(count>=3){
+        if(count >= 3){
           for(let k=0;k<count;k++){
-            matches.push({x:x-1-k,y});
+            let px = x-1-k;
+            let py = y;
+            map[px+"_"+py] = {x:px,y:py};
           }
         }
 
-        // ✅ 5個以上なら爆弾位置記録
-        if(count>=5){
-          bombPos = {x:x-1,y};
-        }
-
-        count=1;
+        count = 1;
       }
     }
   }
 
-  // 縦
+  // ===== 縦 =====
   for(let x=0;x<size;x++){
-    let count=1;
+    let count = 1;
+
     for(let y=1;y<=size;y++){
-      if(y<size && board[y][x]===board[y-1][x]){
+
+      if(y<size && board[y][x] === board[y-1][x]){
         count++;
       } else {
 
-        if(count>=3){
+        if(count >= 3){
           for(let k=0;k<count;k++){
-            matches.push({x,y:y-1-k});
+            let px = x;
+            let py = y-1-k;
+            map[px+"_"+py] = {x:px,y:py};
           }
         }
 
-        if(count>=5){
-          bombPos = {x,y:y-1};
-        }
-
-        count=1;
+        count = 1;
       }
     }
   }
 
-  return {matches, bombPos};
+  // ✅ 消えるマス
+  matches = Object.values(map);
+
+  // ===== 爆弾判定 =====
+  let groups = getGroups();
+
+  groups.forEach(g => {
+
+    if(fromBomb) return;
+
+    // ✅ グループ5以上
+    if(g.length < 5) return;
+
+    // ✅ このグループの中で「実際に消える数」を数える
+    let hit = g.filter(p =>
+      matches.some(m => m.x === p.x && m.y === p.y)
+    );
+
+    // ✅ 5個以上「消える必要あり」
+    if(hit.length < 5) return;
+
+    // ✅ 爆弾で消えた場合防止
+    if(hit.length > matches.length) return;
+
+    // ✅ 爆弾生成
+    let center = hit[Math.floor(hit.length/2)];
+    bombPos.push(center);
+  });
+
+  return { matches, bombPos };
 }
+
 
 
 // ===== 消し =====
@@ -1003,21 +1031,24 @@ function remove(m, bombPos){
   flash = 0.8;
   shake = 10;
 
-  // ✅ コンボ表示
   if(combo > 1){
     document.getElementById("combo").innerText =
       combo + " COMBO! 🔥";
-    
-    comboTimer = 120; // ✅ 約1秒表示（60フレーム）
+    comboTimer = 120;
   }
 
+  // ✅ まず全部消す
   m.forEach(p=>{
     board[p.y][p.x] = null;
   });
 
-  if(bombPos){
-    board[bombPos.y][bombPos.x] = "bomb";
+  // ✅ 爆弾は「別の場所」に置く
+  if(bombPos && bombPos.length){
+    bombPos.forEach(p=>{
+      board[p.y][p.x] = "bomb";
+    });
   }
+  fromBomb = false;
 }
 
 
@@ -1027,19 +1058,23 @@ function drop(){
 
   for(let x=0;x<size;x++){
 
-    let stack=[];
+    let writeY = size - 1;
 
+    // ✅ 下から詰める
     for(let y=size-1;y>=0;y--){
       if(board[y][x] !== null){
-        stack.push(board[y][x]);
+        board[writeY][x] = board[y][x];
+        writeY--;
       }
     }
 
-    for(let y=size-1;y>=0;y--){
-      board[y][x] = stack.shift() || null;
+    // ✅ 残りを空にする
+    for(let y=writeY;y>=0;y--){
+      board[y][x] = null;
     }
   }
 }
+
 
 
 // ===== 補充 =====
@@ -1059,7 +1094,13 @@ function swap(x1,y1,x2,y2){
 }
 
 // ===== 爆弾 =====
+
+let fromBomb = false; // ✅ 爆弾ターンかどうか
+
 function explode(x,y){
+
+  fromBomb = true;
+
   for(let dy=-1; dy<=1; dy++){
     for(let dx=-1; dx<=1; dx++){
       let nx = x + dx;
@@ -1070,6 +1111,42 @@ function explode(x,y){
       }
     }
   }
+}
+
+function getGroups(){
+
+  let visited = Array.from({length:size},()=>Array(size).fill(false));
+  let groups = [];
+
+  function dfs(x,y,type,group){
+    if(x<0 || x>=size || y<0 || y>=size) return;
+    if(visited[y][x]) return;
+    if(board[y][x] !== type) return;
+
+    visited[y][x] = true;
+    group.push({x,y});
+
+    dfs(x+1,y,type,group);
+    dfs(x-1,y,type,group);
+    dfs(x,y+1,type,group);
+    dfs(x,y-1,type,group);
+  }
+
+  for(let y=0;y<size;y++){
+    for(let x=0;x<size;x++){
+
+      if(visited[y][x]) continue;
+
+      let group = [];
+      dfs(x,y,board[y][x],group);
+
+      if(group.length >= 3){ // ✅ 最低3で消す
+        groups.push(group);
+      }
+    }
+  }
+
+  return groups;
 }
 
 // ===== 更新 =====
@@ -1093,6 +1170,10 @@ function update(){
     return;
   }
 
+  if(highlightTimer <= 0){
+  highlight = [];
+  }
+
   // ✅ 新しくマッチ見つけた
   if(m.length){
 
@@ -1100,23 +1181,39 @@ function update(){
     highlightTimer = 8;
 
     // ✅ removeは必ずここで1回だけ
+    if(m.length){
+
+  highlight = m;
+  highlightTimer = 8;
+
+  setTimeout(() => {
+
+    // ✅ 消す
+    remove(m, data.bombPos);
+
     setTimeout(() => {
 
-      remove(m, data.bombPos);
-
-    setTimeout(() => {
-
+      // ✅ 落とす
       drop();
-      fill();
 
-      // ✅ 落ちた後にも待つ！
       setTimeout(() => {
-        update();
-      }, 150);
 
-    }, 150);
+        // ✅ 補充
+        fill();
 
-    }, 150);
+        // ✅ 完全に終わってから次
+        setTimeout(() => {
+          update();
+        }, 200);
+
+      }, 200);
+
+    }, 200);
+
+  }, 150);
+
+  return;
+}
 
     return;
   }
