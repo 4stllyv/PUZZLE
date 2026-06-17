@@ -38,6 +38,7 @@ body{
   flex-direction:column;
   align-items:center;
   position: relative;
+  padding-top:20px;
 }
 
 
@@ -545,6 +546,10 @@ let playerName = "";
 
 function startGame(){
 
+  ending = false; 
+  showEnd = false;
+
+
   
   const name = document.getElementById("name").value.trim();
 
@@ -585,6 +590,10 @@ function startGame(){
 
 function retryGame(){
 
+  ending = false;
+  showEnd = false;
+
+
   // ✅ 状態リセット
   score = 0;
   moves = 30;
@@ -604,6 +613,10 @@ function retryGame(){
 }
 
 function goTitle(){
+
+  ending = false;
+  showEnd = false;
+
 
   // ✅ 状態リセット
   score = 0;
@@ -663,27 +676,35 @@ function show(id){
   document.getElementById(id).classList.add("active");
 }
 
+let showEnd = false;
+
 function gameOver(){
+
   isGameOver = true;
+  showEnd = true; // ✅ 追加（終了演出ON）
 
-  show("result");
-
+  // ✅ スコア表示はここでやっとく
   document.getElementById("final").innerText =
     "Score: " + score;
 
-  // ローカルランキング
+  // ✅ ランキング処理もここでOK
   let r = JSON.parse(localStorage.getItem("rank") || "[]");
   r.push(score);
   r.sort((a,b)=>b-a);
   r = r.slice(0,5);
   localStorage.setItem("rank", JSON.stringify(r));
 
-  // ✅ ここ追加！！
   db.ref("scores").push({
-  name: playerName,
-  score: score,
-  time: Date.now()
-});
+    name: playerName,
+    score: score,
+    time: Date.now()
+  });
+
+  // ✅ ここが一番重要！！
+  setTimeout(()=>{
+    show("result");
+    showEnd = false; // ✅ 念のため戻す
+  }, 1000); // ← 表示時間（1秒）
 }
 
 // ===== 素材 =====
@@ -788,7 +809,12 @@ const c=document.getElementById("game");
 const ctx=c.getContext("2d");
 
 
-const maxSize = Math.min(window.innerWidth, window.innerHeight) * 0.8;
+const topUI = 200; // ✅ 上のUI高さ（調整OK）
+
+const maxSize = Math.min(
+  window.innerWidth * 0.95,
+  window.innerHeight - topUI
+);
 
 c.width = maxSize;
 c.height = maxSize;
@@ -840,7 +866,7 @@ for(let y=0;y<size;y++){
     if(!b) continue;
 
     // ✅ 基本サイズ
-    let baseSize = cell - 10;
+    let baseSize = cell - 4;
     let size2 = baseSize;
 
     let px = x * cell + 10;
@@ -863,6 +889,17 @@ for(let y=0;y<size;y++){
     // ✅ 必ず戻す！！
     ctx.globalAlpha = 1;
   }
+  if(showEnd){
+
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.fillRect(0,0,c.width,c.height);
+
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 40px sans-serif";
+  ctx.textAlign = "center";
+
+  ctx.fillText("終了！", c.width/2, c.height/2);
+}
 }
 
 
@@ -1040,12 +1077,12 @@ let isGameOver = false;
 
 let highlight = [];
 let highlightTimer = 0;
+let ending = false; // ✅ 終了待ち状態
 
 function update(){
 
   if(moves <= 0){
-    gameOver();
-    return;
+    ending = true;
   }
 
   let data = find();
@@ -1093,6 +1130,12 @@ function update(){
     } while(!hasMove());
     return;
   }
+  
+  if(ending && m.length === 0){
+    gameOver();
+    return;
+  }
+
 
   document.getElementById("score").innerText = "Score:" + score;
   document.getElementById("moves").innerText = "Moves:" + moves;
