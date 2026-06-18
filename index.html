@@ -1,1101 +1,134 @@
-window.addEventListener("load", () => {
-
-  // ✅ 最低表示時間
-  const minTime = 1500;
-
-  let loaded = false;
-
-  // ✅ ランキング読み込み待ち
-  db.ref("scores").once("value").then(() => {
-    loaded = true;
-  });
-
-  // ✅ 一定時間後チェック
-  setTimeout(() => {
-
-    function tryHide() {
-      if (loaded) {
-        const splash = document.getElementById("splash");
-        splash.style.opacity = "0";
-
-        setTimeout(() => {
-          splash.style.display = "none";
-        }, 500);
-      } else {
-        // ✅ まだ読み込み中なら待つ
-        setTimeout(tryHide, 200);
-      }
-    }
-
-    tryHide();
-
-  }, minTime);
-});
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCfDeRotfmLbzPxFOcb3pOIx41fUzofwR8",
-  authDomain: "puzzle-game-af891.firebaseapp.com",
-  databaseURL: "https://puzzle-game-af891-default-rtdb.firebaseio.com/",
-  projectId: "puzzle-game-af891",
-  storageBucket: "puzzle-game-af891.firebasestorage.app",
-  messagingSenderId: "57733853912",
-  appId: "1:57733853912:web:e42b7a96e50b9ca77d1dad",
-  measurementId: "G-1SSQNNMKC8"
-};
-
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-
-document.body.addEventListener("touchmove", e => {
-  e.preventDefault();
-}, { passive: false });
-
-
-db.ref("scores").on("value", snapshot => {
-
-  let data = snapshot.val();
-
-  let text = "🌍 世界ランク\n";
-
-  if (!data) {
-    text += "まだスコアなし";
-  } else {
-
-    let arr = Object.values(data);
-    arr.sort((a, b) => b.score - a.score);
-
-    arr.slice(0, 5).forEach((v, i) => {
-      text += (i + 1) + ". " + v.name + " : " + v.score + "\n";
-    });
-
-
-  }
-
-  document.getElementById("globalRank").innerText = text;
-});
-
-
-let started = false;
-
-let playerName = "";
-
-function startGame() {
-
-  ending = false;
-  showEnd = false;
-
-
-
-  const name = document.getElementById("name").value.trim();
-
-  if (!name) {
-    alert("名前を入力してください！");
-    return;
-  }
-
-  playerName = name;
-
-  localStorage.setItem("playerName", name);
-
-
-  // ✅ 状態リセット
-  score = 0;
-  moves = 30;
-  combo = 0;
-  isGameOver = false;
-
-  // ✅ UIリセット
-  document.getElementById("scoreNum").innerText = "0";
-  document.getElementById("movesNum").innerText = "30";
-
-  // ✅ 盤面初期化
-  init();
-
-  // ✅ 画面切り替え
-  show("gameScreen");
-
-
-  if (!started) {
-    loop();
-    started = true;
-  }
-}
-
-
-function retryGame() {
-
-  ending = false;
-  showEnd = false;
-
-
-  // ✅ 状態リセット
-  score = 0;
-  moves = 30;
-  combo = 0;
-  isGameOver = false;
-
-  // ✅ 盤面作り直し
-  init();
-
-  // ✅ UIリセット
-  document.getElementById("scoreNum").innerText = "0";
-  document.getElementById("movesNum").innerText = "30";
-
-  // ✅ ゲーム画面に戻る
-  show("gameScreen");
-}
-
-function goTitle() {
-
-  ending = false;
-  showEnd = false;
-
-
-  // ✅ 状態リセット
-  score = 0;
-  moves = 30;
-  combo = 0;
-  isGameOver = false;
-
-  // ✅ UIリセット
-  document.getElementById("scoreNum").innerText = "0";
-  document.getElementById("movesNum").innerText = "30";
-
-  // ✅ タイトルへ
-  show("title");
-}
-
-let tempAction = null;
-
-// 歯車→メニュー
-function openMenu() {
-  show("menu");
-}
-
-// 押した選択を保存
-function confirmAction(type) {
-  tempAction = type;
-  show("confirm");
-}
-
-// 「いいえ」
-function backMenu() {
-  show("menu");
-}
-
-// 「はい」
-function doAction() {
-
-  console.log("実行:", tempAction); // ✅ デバッグ
-
-  if (tempAction === "retry") {
-    retryGame();
-    return;
-  }
-
-  if (tempAction === "title") {
-    goTitle();
-    return;
-  }
-
-  console.log("⚠ 未定義:", tempAction);
-}
-
-function show(id) {
-  document.querySelectorAll(".screen").forEach(s => {
-    s.classList.remove("active");
-  });
-  document.getElementById(id).classList.add("active");
-
-
-  const note = document.querySelector(".note");
-  if (id === "title") {
-    note.style.display = "block";
-  } else {
-    note.style.display = "none";
-  }
-}
-
-let showEnd = false;
-
-function gameOver() {
-
-  isGameOver = true;
-  showEnd = true; // ✅ 追加（終了演出ON）
-
-  // ✅ スコア表示はここでやっとく
-  document.getElementById("final").innerText =
-    "Score: " + score;
-
-  // ✅ ランキング処理もここでOK
-  let r = JSON.parse(localStorage.getItem("rank") || "[]");
-  r.push(score);
-  r.sort((a, b) => b - a);
-  r = r.slice(0, 5);
-  localStorage.setItem("rank", JSON.stringify(r));
-
-  db.ref("scores").push({
-    name: playerName,
-    score: score,
-    time: Date.now()
-  });
-
-  // ✅ ここが一番重要！！
-  setTimeout(() => {
-    show("result");
-    showEnd = false; // ✅ 念のため戻す
-  }, 1000); // ← 表示時間（1秒）
-}
-
-// ===== 素材 =====
-const imgs = {
-  red: new Image(), blue: new Image(),
-  green: new Image(), yellow: new Image(),
-  purple: new Image(), bomb: new Image()
-};
-
-imgs.red.src = "assets/red.png";
-imgs.blue.src = "assets/blue.png";
-imgs.green.src = "assets/green.png";
-imgs.yellow.src = "assets/yellow.png";
-imgs.purple.src = "assets/purple.png";
-imgs.bomb.src = "assets/bomb.png";
-
-const sound = new Audio("assets/pop.mp3");
-
-// ===== 状態 =====
-const size = 8
-let cell = 50;
-const colors = ["red", "blue", "green", "yellow", "purple"];
-
-let comboTimer = 0;
-
-let board = [], score = 0, moves = 30, combo = 0;
-let swapAnim = null, fallAnim = [];
-let flash = 0, shake = 0;
-
-// ===== 初期化 =====
-function rand() {
-  return colors[Math.floor(Math.random() * colors.length)];
-}
-
-function hasMove() {
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-
-      // 右と入れ替え
-      if (x < size - 1) {
-        swap(x, y, x + 1, y);
-        if (find().matches.length) {
-          swap(x, y, x + 1, y);
-          return true;
-        }
-        swap(x, y, x + 1, y);
-      }
-
-      // 下と入れ替え
-      if (y < size - 1) {
-        swap(x, y, x, y + 1);
-        if (find().matches.length) {
-          swap(x, y, x, y + 1);
-          return true;
-        }
-        swap(x, y, x, y + 1);
-      }
-
-    }
-  }
-
-  return false;
-}
-
-function init() {
-
-  do {
-
-    board = [];
-
-    for (let y = 0; y < size; y++) {
-      board[y] = [];
-
-      for (let x = 0; x < size; x++) {
-
-        let c;
-
-        do {
-          c = rand();
-
-        } while (
-          x >= 2 &&
-          board[y][x - 1] === c &&
-          board[y][x - 2] === c ||
-
-          y >= 2 &&
-          board[y - 1][x] === c &&
-          board[y - 2][x] === c
-        );
-
-        board[y][x] = c;
-      }
-    }
-
-  } while (!hasMove()); // ✅ ここが神ポイント
-}
-
-
-// ===== 描画 =====
-const c = document.getElementById("game");
-const ctx = c.getContext("2d");
-
-
-const topUI = 180; // ✅ 上のUI高さ（調整OK）
-
-const maxSize = Math.min(
-  500,
-  window.innerWidth * 0.9,
-  window.innerHeight - topUI
-);
-
-c.width = maxSize;
-c.height = maxSize;
-
-// ✅ 重要：cellをletにしておく！
-cell = Math.floor(c.width / size);
-c.width = cell * size;
-c.height = cell * size;
-
-function draw() {
-  ctx.clearRect(0, 0, c.width, c.height);
-
-  // フラッシュ
-  if (flash > 0) {
-    ctx.fillStyle = "rgba(255,255,255," + flash + ")";
-    ctx.fillRect(0, 0, c.width, c.height);
-    flash -= 0.05;
-  }
-
-  ctx.save();
-
-  // シェイク
-  if (shake > 0) {
-    ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
-    shake--;
-  }
-
-  // 落下描画
-  fallAnim.forEach(f => {
-    let yPos = f.from + (f.to - f.from) * f.progress;
-
-    let px = f.x * cell + 10;
-    let py = yPos * cell + 10;
-
-    let b = f.type;
-
-    ctx.drawImage(imgs[b], px, py, cell - 4, cell - 4);
-  });
-
-  // 通常描画
-  // 通常描画
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-
-      if (fallAnim.some(f => f.x === x && f.to === y)) continue;
-
-      let b = board[y][x];
-      if (!b) continue;
-
-      // ✅ 基本サイズ
-      let baseSize = cell - 4;
-      let size2 = baseSize;
-
-      let offset = (c.width - cell * size) / 2;
-
-      let px = x * cell + offset;
-      let py = y * cell + offset;
-
-      // ✅ ハイライト（光る＆拡大）
-      if (highlightTimer > 0 && highlight.some(p => p.x === x && p.y === y)) {
-        size2 = baseSize * 1.2;
-
-        // ✅ 中心補正（超重要）
-        px -= (size2 - baseSize) / 2;
-        py -= (size2 - baseSize) / 2;
-
-        ctx.globalAlpha = 0.7;
-      }
-
-      if (b === "bomb") {
-        ctx.drawImage(imgs[b], px, py, size2, size2);
-
-        let cx = px + size2 / 2;
-        let cy = py + size2 / 2;
-
-        let t = Date.now() / 300;
-
-        let pulse = (Math.sin(t) + 1) / 2;
-        pulse = Math.pow(pulse, 2.5);
-
-        // ✅ サイズ控えめ
-        let glowSize = size2 + pulse * 4;
-
-        ctx.save();
-        ctx.globalCompositeOperation = "lighter";
-
-        let glow = ctx.createRadialGradient(
-          cx, cy, size2 * 0.2,
-          cx, cy, glowSize
-        );
-
-        // ✅ 明るさを大幅に抑える（ここがポイント）
-        glow.addColorStop(0, `rgba(255,255,220,${0.15 + pulse * 0.35})`);
-        glow.addColorStop(0.5, `rgba(255,220,120,${0.08 + pulse * 0.25})`);
-        glow.addColorStop(1, "rgba(255,200,0,0)");
-
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        ctx.arc(cx, cy, glowSize, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-
-      } else {
-        ctx.drawImage(imgs[b], px, py, size2, size2);
-      }
-
-
-      // ✅ 必ず戻す！！
-      ctx.globalAlpha = 1;
-    }
-    if (showEnd) {
-
-      ctx.fillStyle = "rgba(0,0,0,0.6)";
-      ctx.fillRect(0, 0, c.width, c.height);
-
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 40px sans-serif";
-      ctx.textAlign = "center";
-
-      ctx.fillText("終了！", c.width / 2, c.height / 2);
-    }
-
-    // ✅ コンボ表示（ここに追加！）
-    if (combo > 1 && comboTimer > 0) {
-
-      let offset = (c.width - cell * size) / 2;
-
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 24px sans-serif";
-      ctx.textAlign = "center";
-
-      let x = comboX * cell + offset + cell / 2;
-      let y = comboY * cell + offset - 10;
-
-      ctx.fillText(combo + " COMBO!", x, y);
-    }
-  }
-  ctx.restore();
-}
-
-function drawBomb(x, y, size) {
-
-  // 本体
-  ctx.fillStyle = "#000";
-  ctx.beginPath();
-  ctx.arc(x, y, size / 2, 0, Math.PI * 2);
-  ctx.fill();
-
-  // ✅ 光エフェクト
-  let glow = ctx.createRadialGradient(x, y, 5, x, y, size);
-  glow.addColorStop(0, "rgba(255,255,200,0.9)");
-  glow.addColorStop(1, "rgba(255,200,0,0)");
-
-  ctx.fillStyle = glow;
-  ctx.beginPath();
-  ctx.arc(x, y, size, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-// ===== スワップ =====
-function animateSwap(x1, y1, x2, y2, valid) {
-  swapAnim = { x1, y1, x2, y2, progress: 0, valid };
-}
-
-// ===== アニメ更新 =====
-function updateAnim() {
-  if (swapAnim) {
-    swapAnim.progress += 0.15;
-
-    if (swapAnim.progress >= 1) {
-      let a = swapAnim;
-
-      let t = board[a.y1][a.x1];
-      board[a.y1][a.x1] = board[a.y2][a.x2];
-      board[a.y2][a.x2] = t;
-
-      swapAnim = null;
-
-      if (find().matches.length) {
-        moves--;
-        update();
-      } else if (a.valid) {
-        animateSwap(a.x2, a.y2, a.x1, a.y1, false);
-      }
-    }
-  }
-
-  fallAnim.forEach(f => f.progress += 0.05);
-  fallAnim = fallAnim.filter(f => f.progress < 1);
-}
-
-// ===== マッチ =====
-function find() {
-
-  let matches = [];
-  let bombPos = [];
-  let extra = [];
-
-  let map = {};
-
-  // ===== 横 =====
-  for (let y = 0; y < size; y++) {
-    let count = 1;
-
-    for (let x = 1; x <= size; x++) {
-
-      if (x < size && board[y][x] === board[y][x - 1]) {
-        count++;
-      } else {
-
-        if (count >= 3) {
-
-          let group = [];
-
-          for (let k = 0; k < count; k++) {
-            let px = x - 1 - k;
-            let py = y;
-
-            map[px + "_" + py] = { x: px, y: py };
-            group.push({ x: px, y: py });
-          }
-
-          // ✅ 4個 → 横1列消す
-          if (count === 4) {
-            for (let i = 0; i < size; i++) {
-              extra.push({ x: i, y: y });
-            }
-          }
-
-        }
-
-        count = 1;
-      }
-    }
-  }
-
-  // ===== 縦 =====
-  for (let x = 0; x < size; x++) {
-    let count = 1;
-
-    for (let y = 1; y <= size; y++) {
-
-      if (y < size && board[y][x] === board[y - 1][x]) {
-        count++;
-      } else {
-
-        if (count >= 3) {
-
-          let group = [];
-
-          for (let k = 0; k < count; k++) {
-            let px = x;
-            let py = y - 1 - k;
-
-            map[px + "_" + py] = { x: px, y: py };
-            group.push({ x: px, y: py });
-          }
-
-          // ✅ 4個 → 縦1列消す
-          if (count === 4) {
-            for (let i = 0; i < size; i++) {
-              extra.push({ x: x, y: i });
-            }
-          }
-
-        }
-
-        count = 1;
-      }
-    }
-  }
-
-  // ✅ 通常マッチ
-  let base = Object.values(map);
-
-  // ===== 5個以上（どんな形でも）爆弾 =====
-  let groups = getGroups();
-
-  groups.forEach(g => {
-
-    // ✅ 爆弾が原因なら生成しない
-    if (bombTriggered) return;
-
-    if (g.some(p => board[p.y][p.x] === "bomb")) return;
-
-    if (g.length >= 5) {
-
-      let hit = g.filter(p =>
-        base.some(m => m.x === p.x && m.y === p.y)
-      );
-
-      if (hit.length >= 5) {
-        let center = hit[Math.floor(hit.length / 2)];
-        bombPos.push(center);
-      }
-
-    }
-
-  });
-
-  // ✅ 全部まとめる
-  let all = base.concat(extra);
-
-  // ✅ 重複削除
-  let used = {};
-  all = all.filter(p => {
-    let key = p.x + "_" + p.y;
-    if (used[key]) return false;
-    used[key] = true;
-    return true;
-  });
-
-  // ✅ 爆弾も重複削除
-  let bmap = {};
-  bombPos = bombPos.filter(p => {
-    let key = p.x + "_" + p.y;
-    if (bmap[key]) return false;
-    bmap[key] = true;
-    return true;
-  });
-
-  return {
-    matches: all,
-    bombPos,
-    baseCount: base.length // ✅ スコア用
-  };
-}
-
-
-
-
-
-// ===== 消し =====
-let comboX = 0;
-let comboY = 0;
-
-function remove(m, bombPos, baseCount) {
-
-  combo++;
-
-  let count = baseCount || m.length;
-
-  score += count * 10 * combo;
-
-  flash = 0.8;
-  shake = 10;
-
-  m.forEach(p => {
-    board[p.y][p.x] = null;
-  });
-
-  if (bombPos && bombPos.length) {
-    bombPos.forEach(p => {
-      board[p.y][p.x] = "bomb";
-    });
-  }
-  bombTriggered = false;
-}
-
-
-
-
-// ===== 落下 =====
-function drop() {
-
-  for (let x = 0; x < size; x++) {
-
-    let writeY = size - 1;
-
-    // ✅ 下から詰める
-    for (let y = size - 1; y >= 0; y--) {
-      if (board[y][x] !== null) {
-        board[writeY][x] = board[y][x];
-        writeY--;
-      }
-    }
-
-    // ✅ 残りを空にする
-    for (let y = writeY; y >= 0; y--) {
-      board[y][x] = null;
-    }
-  }
-}
-
-
-
-// ===== 補充 =====
-function fill() {
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      if (!board[y][x]) board[y][x] = rand();
-    }
-  }
-}
-
-// ===== スワップ =====
-function swap(x1, y1, x2, y2) {
-  let t = board[y1][x1];
-  board[y1][x1] = board[y2][x2];
-  board[y2][x2] = t;
-}
-
-// ===== 爆弾 =====
-
-let bombTriggered = false; // 爆弾で消えたか
-
-function explode(x, y) {
-
-  bombTriggered = true;
-
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      let nx = x + dx;
-      let ny = y + dy;
-
-      if (nx >= 0 && ny >= 0 && nx < size && ny < size) {
-        board[ny][nx] = null;
-      }
-    }
-  }
-}
-
-function getGroups() {
-
-  let visited = Array.from({ length: size }, () => Array(size).fill(false));
-  let groups = [];
-
-  function dfs(x, y, type, group) {
-
-    if (type === "bomb") return;
-    if (x < 0 || x >= size || y < 0 || y >= size) return;
-    if (visited[y][x]) return;
-    if (board[y][x] !== type) return;
-
-    visited[y][x] = true;
-    group.push({ x, y });
-
-    dfs(x + 1, y, type, group);
-    dfs(x - 1, y, type, group);
-    dfs(x, y + 1, type, group);
-    dfs(x, y - 1, type, group);
-  }
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-
-      if (visited[y][x]) continue;
-
-      let group = [];
-      dfs(x, y, board[y][x], group);
-
-      if (group.length >= 3) { // ✅ 最低3で消す
-        groups.push(group);
-      }
-    }
-  }
-
-  return groups;
-}
-
-// ===== 更新 =====
-let isGameOver = false;
-
-let highlight = [];
-let highlightTimer = 0;
-let ending = false; // ✅ 終了待ち状態
-let isBusy = false;
-
-function update() {
-
-  if (moves <= 0) {
-    ending = true;
-  }
-
-  let data = find();
-  let m = data.matches;
-
-  if (highlightTimer > 0) {
-    return;
-  }
-
-  if (highlightTimer <= 0) {
-    highlight = [];
-  }
-
-  if (m.length) {
-
-    isBusy = true;
-
-    highlight = m;
-    highlightTimer = 8;
-
-    setTimeout(() => {
-
-      remove(m, data.bombPos, data.baseCount);
-
-      setTimeout(() => {
-
-        drop();
-
-        setTimeout(() => {
-
-          fill();
-
-          setTimeout(() => {
-            update();
-            isBusy = false;
-          }, 200);
-
-        }, 200);
-
-      }, 200);
-
-    }, 150);
-
-    return;
-  }
-
-  combo = 0;
-
-  if (!hasMove()) {
-    do {
-      shuffle();
-    } while (!hasMove());
-    return;
-  }
-
-  if (ending && m.length === 0) {
-    gameOver();
-    return;
-  }
-
-  document.getElementById("scoreNum").innerText = score;
-  document.getElementById("movesNum").innerText = moves;
-}
-
-
-// ---- PC ----
-let swipeStart = null;
-
-// --- PC ---
-c.addEventListener("mousedown", e => {
-  if (isGameOver || isBusy) return;
-
-  let offset = (c.width - cell * size) / 2;
-
-  let x = Math.floor((e.offsetX - offset) / cell);
-  let y = Math.floor((e.offsetY - offset) / cell);
-
-  // 範囲外防止（おすすめ）
-  if (x < 0 || y < 0 || x >= size || y >= size) return;
-
-  swipeStart = { x, y };
-});
-
-c.addEventListener("mouseup", e => {
-  if (!swipeStart) return;
-
-  let offset = (c.width - cell * size) / 2;
-
-  let x = Math.floor((e.offsetX - offset) / cell);
-  let y = Math.floor((e.offsetY - offset) / cell);
-
-  let dx = x - swipeStart.x;
-  let dy = y - swipeStart.y;
-
-  // ✅ 爆弾タップ優先
-  if (dx === 0 && dy === 0) {
-    if (board[y][x] === "bomb") {
-      moves--;
-      explode(x, y);
-      update();
-      swipeStart = null;
-      return;
-    }
-  }
-
-  // 通常スワップ
-  if (Math.abs(dx) + Math.abs(dy) === 1) {
-    let x1 = swipeStart.x;
-    let y1 = swipeStart.y;
-
-    swap(x1, y1, x, y);
-
-
-    let result = find();
-
-    if (result.matches.length > 0) {
-      combo = 0;
-      moves--;
-      update();
-    } else {
-      swap(x1, y1, x, y);
-    }
-
-  }
-
-  swipeStart = null;
-});
-
-// --- スマホ ---
-c.addEventListener("touchstart", e => {
-  e.preventDefault();
-  if (isGameOver || isBusy) return;
-
-  let r = c.getBoundingClientRect();
-  let t = e.touches[0];
-
-  let offset = (c.width - cell * size) / 2;
-
-  let x = Math.floor((t.clientX - r.left - offset) / cell);
-  let y = Math.floor((t.clientY - r.top - offset) / cell);
-
-  if (x < 0 || y < 0 || x >= size || y >= size) return;
-
-  swipeStart = { x, y };
-});
-
-
-c.addEventListener("touchend", e => {
-  e.preventDefault();
-  if (!swipeStart || isBusy) return;
-
-  let r = c.getBoundingClientRect();
-  let t = e.changedTouches[0];
-
-  let offset = (c.width - cell * size) / 2;
-
-  let x = Math.floor((t.clientX - r.left - offset) / cell);
-  let y = Math.floor((t.clientY - r.top - offset) / cell);
-
-  let dx = x - swipeStart.x;
-  let dy = y - swipeStart.y;
-
-  // ✅ 追加：その場タップ（爆弾発動）
-  if (dx === 0 && dy === 0) {
-    if (board[y][x] === "bomb") {
-      explode(x, y);
-      update();
-      swipeStart = null;
-      return;
-    }
-  }
-
-  // ✅ 通常スワップ
-  if (Math.abs(dx) + Math.abs(dy) === 1) {
-
-    let x1 = swipeStart.x;
-    let y1 = swipeStart.y;
-
-    // ✅ スワップ先が爆弾でも発動
-    if (board[y][x] === "bomb") {
-      combo = 0;
-      explode(x, y);
-      update();
-    } else {
-
-      swap(x1, y1, x, y);
-
-
-      let result = find();
-
-      if (result.matches.length > 0) {
-        moves--;
-        update();
-      } else {
-        swap(x1, y1, x, y);
-      }
-
-    }
-  }
-
-  swipeStart = null;
-});
-
-
-
-// ===== ループ =====
-function loop() {
-
-  draw();
-  updateAnim();
-
-
-  if (highlightTimer > 0) {
-    highlightTimer--;
-  } else {
-    highlight = []; // ✅ 終わったら解除
-  }
-
-
-  requestAnimationFrame(loop);
-}
-
-function confirmAction(type) {
-  console.log("押された:", type); // ✅ デバッグ
-
-  tempAction = type;
-
-  let text = "";
-
-  if (type === "retry") {
-    text = "現在のゲームをやり直します。\nよろしいですか？";
-  }
-
-  if (type === "title") {
-    text = "タイトルに戻ります。\n進行中のゲームは失われます。";
-  }
-
-  document.getElementById("confirmText").innerText = text;
-
-  show("confirm");
-}
-
-function shuffle() {
-
-  let arr = [];
-
-  // ✅ 全部1次元に集める
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      arr.push(board[y][x]);
-    }
-  }
-
-  // ✅ シャッフル
-  for (let i = arr.length - 1; i > 0; i--) {
-    let j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-
-  // ✅ 盤面に戻す
-  let i = 0;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      board[y][x] = arr[i++];
-    }
-  }
-}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>動物パズル</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<div id="splash">
+  <div class="logo">動物パズル</div>
+  <div class="loader"></div>
+  <div class="animals">
+  <img src="assets/red.png">
+  <img src="assets/blue.png">
+  <img src="assets/green.png">
+  <img src="assets/purple.png">
+  <img src="assets/yellow.png">
+  <img src="assets/bomb.png">
+  </div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<div id="title" class="screen active">
+  <h1>動物パズル</h1>
+  <div id="globalRank"></div>
+
+  <input id="name" placeholder="名前を入力" maxlength="10">
+  <button onclick="startGame()">START</button>
+  <div class="note">
+  ※ Safari / Chrome 推奨（LINE・Instagram内では正しく動作しない場合があります）
+  </div>
+</div>
+
+<div id="gameScreen" class="screen">
+  <button id="help" onclick="show('rules')">❓</button>
+  <h1>動物パズル</h1>
+
+  <div class="ui">
+    <div class="card">
+      <div class="label">スコア</div>
+      <div id="scoreNum" class="value">0</div>
+    </div>
+
+    <div class="card">
+      <div class="label">残り回数</div>
+      <div id="movesNum" class="value">30</div>
+    </div>
+  </div>
+
+
+  <button id="gear" onclick="openMenu()">⚙</button>
+
+  <canvas id="game"></canvas>
+</div>
+
+<div id="menu" class="screen overlay">
+  <div class="box">
+    <h2>メニュー</h2>
+
+    <p class="desc">操作を選んでください</p>
+
+    <button class="menuBtn" onclick="confirmAction('retry')">
+      🔄 やり直す
+    </button>
+
+    <button class="menuBtn" onclick="confirmAction('title')">
+      🏠 タイトルへ
+    </button>
+
+    <button class="menuBtn cancel" onclick="show('gameScreen')">
+      ↩ 戻る
+    </button>
+  </div>
+</div>
+
+
+<!-- ✅ 外に出す -->
+<div id="confirm" class="screen overlay">
+  <div class="box confirmBox">
+    <h2>確認</h2>
+
+    <p id="confirmText" class="desc"></p>
+
+    <div class="confirmButtons">
+      <button class="btn yes" onclick="doAction()">はい</button>
+      <button class="btn no" onclick="backMenu()">いいえ</button>
+    </div>
+  </div>
+</div>
+
+<div id="result" class="screen">
+  <div class="resultBox">
+    <h1>RESULT</h1>
+
+    <div id="final" class="scoreText"></div>
+
+    <div id="rank" class="rankText"></div>
+
+    <div class="resultButtons">
+      <button onclick="retryGame()">RETRY</button>
+      <button onclick="goTitle()">タイトルへ</button>
+    </div>
+  </div>
+</div>
+
+<div id="rules" class="screen overlay">
+  <div class="box">
+    <h2>遊び方</h2>
+
+    <p class="desc">
+      同じ動物を3つ以上そろえて消そう！<br><br>
+
+      ・3つ以上 → 消える<br>
+      ・5つ以上 → 🦍爆弾出現<br>
+      ・🦍爆弾 → 周りを消す<br><br>
+
+      手数が0になるとゲーム終了！
+    </p>
+
+    <button class="menuBtn cancel" onclick="show('gameScreen')">
+      戻る
+    </button>
+  </div>
+</div>
+
+<script src="main.js"></script>
+</body>
+</html>
