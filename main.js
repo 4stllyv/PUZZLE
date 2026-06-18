@@ -733,9 +733,15 @@ function remove(m, bombPos){
   flash = 0.8;
   shake = 10;
 
-  m.forEach(p=>{
-    board[p.y][p.x] = null;
-  });
+m.forEach(p=>{
+
+  // ✅ 爆弾なら爆発させる！
+  if(board[p.y][p.x] === "bomb"){
+    explode(p.x, p.y);
+  }
+
+  board[p.y][p.x] = null;
+});
 
   if(bombPos && bombPos.length){
     bombPos.forEach(p=>{
@@ -756,13 +762,12 @@ function drop(){
 
     let writeY = size - 1;
 
-    // ✅ 下から順に埋める
+    // ✅ 下から詰める
     for(let y = size - 1; y >= 0; y--){
 
       if(board[y][x] !== null){
         board[writeY][x] = board[y][x];
 
-        // ✅ 動いたら元を消す
         if(writeY !== y){
           board[y][x] = null;
         }
@@ -771,9 +776,16 @@ function drop(){
       }
     }
 
-    // ✅ 上を全部空にする
+    // ✅ 上を全部null
     for(let y = writeY; y >= 0; y--){
       board[y][x] = null;
+    }
+
+    // ✅ ★ここ追加！！（重要）
+    for(let y = 0; y < size; y++){
+      if(board[y][x] === undefined){
+        board[y][x] = null;
+      }
     }
 
   }
@@ -782,10 +794,12 @@ function drop(){
 
 
 // ===== 補充 =====
-function fill() {
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      if (!board[y][x]) board[y][x] = rand();
+function fill(){
+  for(let y=0;y<size;y++){
+    for(let x=0;x<size;x++){
+      if(board[y][x] === null){
+        board[y][x] = rand();
+      }
     }
   }
 }
@@ -805,12 +819,31 @@ function explode(x, y) {
 
   bombTriggered = true;
 
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      let nx = x + dx;
-      let ny = y + dy;
+  let list = [{x, y}];
+  let visited = {};
 
-      if (nx >= 0 && ny >= 0 && nx < size && ny < size) {
+  while(list.length){
+
+    let p = list.pop();
+    let key = p.x + "_" + p.y;
+
+    if(visited[key]) continue;
+    visited[key] = true;
+
+    // ⭐️ 爆発範囲（3×3）
+    for(let dy = -1; dy <= 1; dy++){
+      for(let dx = -1; dx <= 1; dx++){
+
+        let nx = p.x + dx;
+        let ny = p.y + dy;
+
+        if(nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
+
+        // ✅ ここが重要！！！
+        if(board[ny][nx] === "bomb"){
+          list.push({x:nx, y:ny}); // 💣 さらに爆発
+        }
+
         board[ny][nx] = null;
       }
     }
