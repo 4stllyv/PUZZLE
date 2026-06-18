@@ -660,16 +660,25 @@ function find(){
 
   if(g.some(p => board[p.y][p.x] === "bomb")) return;
   if(bombTriggered) return;
-  if(didLine) return;
-
   // ✅ 実際に消えるマスだけ抽出
   let hit = g.filter(p => map[p.x + "_" + p.y]);
 
-  // ✅ これで本当に「消える5個以上」だけ
+  if(g.length >= 5){
+
+  if(g.some(p => board[p.y][p.x] === "bomb")) return;
+  if(bombTriggered) return;
+
+  // ✅ 実際に消えるマスだけ
+  let hit = g.filter(p => map[p.x + "_" + p.y]);
+
+  // ✅ ★ここが重要！！
   if(hit.length >= 5){
+
     let center = hit[Math.floor(hit.length/2)];
     bombPos.push(center);
   }
+
+}
 
 });
 
