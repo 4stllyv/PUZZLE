@@ -38,7 +38,7 @@
 </div>
 
 <div id="gameScreen" class="screen">
-  <button id="help" onclick="show('rules')">❓</button>
+  <button id="help" onclick="show('rules')">❓遊び方</button>
   <h1>動物パズル</h1>
 
   <div class="ui">
@@ -114,13 +114,26 @@
     <h2>遊び方</h2>
 
     <p class="desc">
-      同じ動物を3つ以上そろえて消そう！<br><br>
+      同じ動物をそろえて消そう！<br><br>
 
-      ・3つ以上 → 消える<br>
-      ・5つ以上 → 🦍爆弾出現<br>
-      ・🦍爆弾 → 周りを消す<br><br>
+      <b>◆ 基本ルール</b><br>
+      🐱🐱🐱 → 消える<br>
+      🔁 連続で消すとコンボ！<br><br>
 
-      手数が0になるとゲーム終了！
+      <b>◆ 特殊ルール</b><br>
+      🐱🐱🐱🐱 → 1列すべて消える！<br>
+      🐱🐱🐱🐱🐱 → 🦍爆弾出現！<br>
+      🦍 → タップで周りをドカン！💥<br><br>
+
+      <b>◆ コンボ技</b><br>
+      ＋やL字にそろえると…<br>
+      💥 列消し＋爆弾など同時発動！<br><br>
+
+      <b>◆ コツ</b><br>
+      🧠 たくさんつながる形を狙おう！<br>
+      ⚡ コンボをつなげて高得点！<br><br>
+
+      🎯 手数が0になるとゲーム終了！
     </p>
 
     <button class="menuBtn cancel" onclick="show('gameScreen')">
