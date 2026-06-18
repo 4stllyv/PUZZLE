@@ -552,41 +552,51 @@ function updateAnim() {
 }
 
 // ===== マッチ =====
-function find() {
-
-  let matches = [];
-  let bombPos = [];
-  let extra = [];
+function find(){
 
   let map = {};
+  let bombPos = [];
+  let extra = [];
+  let didLine = false;
 
-  // ===== 横 =====
-  for (let y = 0; y < size; y++) {
+
+  // =========================
+  // ✅ 横チェック
+  // =========================
+  for(let y=0;y<size;y++){
+
     let count = 1;
 
-    for (let x = 1; x <= size; x++) {
+    for(let x=1;x<=size;x++){
 
-      if (x < size && board[y][x] === board[y][x - 1]) {
+      if(x<size && board[y][x] === board[y][x-1]){
         count++;
       } else {
 
-        if (count >= 3) {
+        if(count >= 3){
 
           let group = [];
 
-          for (let k = 0; k < count; k++) {
-            let px = x - 1 - k;
+          for(let k=0;k<count;k++){
+            let px = x-1-k;
             let py = y;
 
-            map[px + "_" + py] = { x: px, y: py };
-            group.push({ x: px, y: py });
+            map[px+"_"+py] = {x:px,y:py};
+            group.push({x:px,y:py});
           }
 
-          // ✅ 4個 → 横1列消す
-          if (count === 4) {
-            for (let i = 0; i < size; i++) {
-              extra.push({ x: i, y: y });
+          // ✅ 4個 → 横一列
+          if(count === 4){
+            didLine = true; 
+            for(let i=0;i<size;i++){
+              extra.push({x:i,y:y});
             }
+          }
+
+          // ✅ 5以上 → 爆弾
+          if(count >= 5 && !bombTriggered && !didLine){
+            let center = group[Math.floor(group.length/2)];
+            bombPos.push(center);
           }
 
         }
@@ -596,33 +606,43 @@ function find() {
     }
   }
 
-  // ===== 縦 =====
-  for (let x = 0; x < size; x++) {
+  // =========================
+  // ✅ 縦チェック
+  // =========================
+  for(let x=0;x<size;x++){
+
     let count = 1;
 
-    for (let y = 1; y <= size; y++) {
+    for(let y=1;y<=size;y++){
 
-      if (y < size && board[y][x] === board[y - 1][x]) {
+      if(y<size && board[y][x] === board[y-1][x]){
         count++;
       } else {
 
-        if (count >= 3) {
+        if(count >= 3){
 
           let group = [];
 
-          for (let k = 0; k < count; k++) {
+          for(let k=0;k<count;k++){
             let px = x;
-            let py = y - 1 - k;
+            let py = y-1-k;
 
-            map[px + "_" + py] = { x: px, y: py };
-            group.push({ x: px, y: py });
+            map[px+"_"+py] = {x:px,y:py};
+            group.push({x:px,y:py});
           }
 
-          // ✅ 4個 → 縦1列消す
-          if (count === 4) {
-            for (let i = 0; i < size; i++) {
-              extra.push({ x: x, y: i });
+          // ✅ 4個 → 縦一列
+          if(count === 4){
+            didLine = true; 
+            for(let i=0;i<size;i++){
+              extra.push({x:x,y:i});
             }
+          }
+
+          // ✅ 5以上 → 爆弾
+          if(count >= 5 && !bombTriggered && !didLine){
+            let center = group[Math.floor(group.length/2)];
+            bombPos.push(center);
           }
 
         }
@@ -632,59 +652,55 @@ function find() {
     }
   }
 
-  // ✅ 通常マッチ
-  let base = Object.values(map);
-
-  // ===== 5個以上（どんな形でも）爆弾 =====
+  // =========================
+  // ✅ L字・T字（爆弾だけ）
+  // =========================
   let groups = getGroups();
-
   groups.forEach(g => {
 
-    // ✅ 爆弾が原因なら生成しない
-    if (bombTriggered) return;
+  if(g.some(p => board[p.y][p.x] === "bomb")) return;
+  if(bombTriggered) return;
+  if(didLine) return;
 
-    if (g.some(p => board[p.y][p.x] === "bomb")) return;
+  // ✅ 実際に消えるマスだけ抽出
+  let hit = g.filter(p => map[p.x + "_" + p.y]);
 
-    if (g.length >= 5) {
+  // ✅ これで本当に「消える5個以上」だけ
+  if(hit.length >= 5){
+    let center = hit[Math.floor(hit.length/2)];
+    bombPos.push(center);
+  }
 
-      let hit = g.filter(p =>
-        base.some(m => m.x === p.x && m.y === p.y)
-      );
+});
 
-      if (hit.length >= 5) {
-        let center = hit[Math.floor(hit.length / 2)];
-        bombPos.push(center);
-      }
 
-    }
-
-  });
-
-  // ✅ 全部まとめる
+  // =========================
+  // ✅ まとめ
+  // =========================
+  let base = Object.values(map);
   let all = base.concat(extra);
 
-  // ✅ 重複削除
-  let used = {};
-  all = all.filter(p => {
-    let key = p.x + "_" + p.y;
-    if (used[key]) return false;
-    used[key] = true;
+  // 重複削除
+  let used={};
+  all = all.filter(p=>{
+    let key=p.x+"_"+p.y;
+    if(used[key]) return false;
+    used[key]=true;
     return true;
   });
 
-  // ✅ 爆弾も重複削除
-  let bmap = {};
-  bombPos = bombPos.filter(p => {
-    let key = p.x + "_" + p.y;
-    if (bmap[key]) return false;
-    bmap[key] = true;
+  // 爆弾重複削除
+  let usedB={};
+  bombPos = bombPos.filter(p=>{
+    let key=p.x+"_"+p.y;
+    if(usedB[key]) return false;
+    usedB[key]=true;
     return true;
   });
 
   return {
     matches: all,
-    bombPos,
-    baseCount: base.length // ✅ スコア用
+    bombPos
   };
 }
 
@@ -696,23 +712,24 @@ function find() {
 let comboX = 0;
 let comboY = 0;
 
-function remove(m, bombPos, baseCount) {
+function remove(m, bombPos){
 
   combo++;
 
-  let count = baseCount || m.length;
+  // ✅ 実際に消えた数で計算
+  let count = m.length;
 
   score += count * 10 * combo;
 
   flash = 0.8;
   shake = 10;
 
-  m.forEach(p => {
+  m.forEach(p=>{
     board[p.y][p.x] = null;
   });
 
-  if (bombPos && bombPos.length) {
-    bombPos.forEach(p => {
+  if(bombPos && bombPos.length){
+    bombPos.forEach(p=>{
       board[p.y][p.x] = "bomb";
     });
   }
@@ -722,25 +739,26 @@ function remove(m, bombPos, baseCount) {
 
 
 
+
 // ===== 落下 =====
-function drop() {
+function drop(){
 
-  for (let x = 0; x < size; x++) {
+  for(let x=0;x<size;x++){
 
-    let writeY = size - 1;
+    let col = [];
 
-    // ✅ 下から詰める
-    for (let y = size - 1; y >= 0; y--) {
-      if (board[y][x] !== null) {
-        board[writeY][x] = board[y][x];
-        writeY--;
+    // 下から集める
+    for(let y=size-1;y>=0;y--){
+      if(board[y][x] !== null){
+        col.push(board[y][x]);
       }
     }
 
-    // ✅ 残りを空にする
-    for (let y = writeY; y >= 0; y--) {
-      board[y][x] = null;
+    // 下から詰める
+    for(let y=size-1;y>=0;y--){
+      board[y][x] = col[size-1-y] || null;
     }
+
   }
 }
 
@@ -837,24 +855,30 @@ function update() {
   let data = find();
   let m = data.matches;
 
+  // ✅ ハイライト中は処理止める（演出用）
   if (highlightTimer > 0) {
     return;
   }
 
+  // ✅ ハイライト終了処理
   if (highlightTimer <= 0) {
     highlight = [];
   }
 
+  // =========================
+  // ✅ マッチがある場合
+  // =========================
   if (m.length) {
 
-    isBusy = true;
+    isBusy = true;              // ✅ 入力ロック
+    setInputEnabled(false);     // ✅ 入力完全停止
 
     highlight = m;
     highlightTimer = 8;
 
     setTimeout(() => {
 
-      remove(m, data.bombPos, data.baseCount);
+      remove(m, data.bombPos);
 
       setTimeout(() => {
 
@@ -864,9 +888,9 @@ function update() {
 
           fill();
 
+          // ✅ ここ重要：解除しない
           setTimeout(() => {
-            update();
-            isBusy = false;
+            update();  // 次の連鎖へ
           }, 200);
 
         }, 200);
@@ -878,6 +902,9 @@ function update() {
     return;
   }
 
+  // =========================
+  // ✅ マッチない（完全停止候補）
+  // =========================
   combo = 0;
 
   if (!hasMove()) {
@@ -887,11 +914,13 @@ function update() {
     return;
   }
 
+  // ✅ ゲーム終了処理
   if (ending && m.length === 0) {
     gameOver();
     return;
   }
 
+  // ✅ UI更新
   document.getElementById("scoreNum").innerText = score;
   document.getElementById("movesNum").innerText = moves;
 }
@@ -902,8 +931,10 @@ let swipeStart = null;
 
 // --- PC ---
 c.addEventListener("mousedown", e => {
-  if (isGameOver || isBusy) return;
-
+  if (isGameOver || isBusy) {
+    swipeStart = null;
+    return;
+  }
   let offset = (c.width - cell * size) / 2;
 
   let x = Math.floor((e.offsetX - offset) / cell);
@@ -916,7 +947,7 @@ c.addEventListener("mousedown", e => {
 });
 
 c.addEventListener("mouseup", e => {
-  if (!swipeStart) return;
+  if(isBusy || !swipeStart) return;
 
   let offset = (c.width - cell * size) / 2;
 
@@ -963,7 +994,10 @@ c.addEventListener("mouseup", e => {
 // --- スマホ ---
 c.addEventListener("touchstart", e => {
   e.preventDefault();
-  if (isGameOver || isBusy) return;
+  if (isGameOver || isBusy) {
+    swipeStart = null;
+    return;
+  }
 
   let r = c.getBoundingClientRect();
   let t = e.touches[0];
@@ -981,7 +1015,7 @@ c.addEventListener("touchstart", e => {
 
 c.addEventListener("touchend", e => {
   e.preventDefault();
-  if (!swipeStart || isBusy) return;
+  if(!swipeStart || isBusy) return;
 
   let r = c.getBoundingClientRect();
   let t = e.changedTouches[0];
@@ -1038,18 +1072,33 @@ c.addEventListener("touchend", e => {
 
 
 // ===== ループ =====
-function loop() {
+let idleTimer = 0;
+
+function loop(){
 
   draw();
   updateAnim();
 
+  // ✅ マッチあるかチェック
+  let hasMatch = find().matches.length > 0;
 
-  if (highlightTimer > 0) {
-    highlightTimer--;
-  } else {
-    highlight = []; // ✅ 終わったら解除
+  if(hasMatch || fallAnim.length > 0 || swapAnim){
+    idleTimer = 0; // 動いてる
+  }else{
+    idleTimer++;   // 止まってる
   }
 
+  // ✅ 完全停止したら解放
+  if(idleTimer > 10){ // 約0.16秒（60fps基準）
+    isBusy = false;
+    setInputEnabled(true);
+  }
+
+  if(highlightTimer > 0){
+    highlightTimer--;
+  }else{
+    highlight = [];
+  }
 
   requestAnimationFrame(loop);
 }
@@ -1098,4 +1147,17 @@ function shuffle() {
       board[y][x] = arr[i++];
     }
   }
+}
+
+function setInputEnabled(flag){
+
+  const canvas = document.getElementById("game");
+
+  if(flag){
+    canvas.style.pointerEvents = "auto";
+  }else{
+    canvas.style.pointerEvents = "none";
+    swipeStart = null;
+  }
+
 }
