@@ -540,6 +540,7 @@ function updateAnim() {
 
       if (find().matches.length) {
         moves--;
+        document.getElementById("movesNum").innerText = moves;
         update();
       } else if (a.valid) {
         animateSwap(a.x2, a.y2, a.x1, a.y1, false);
@@ -1011,6 +1012,7 @@ c.addEventListener("mouseup", e => {
   if (dx === 0 && dy === 0) {
     if (board[y][x] === "bomb") {
       moves--;
+      document.getElementById("movesNum").innerText = moves;
       explode(x, y);
       update();
       swipeStart = null;
@@ -1031,6 +1033,7 @@ c.addEventListener("mouseup", e => {
     if (result.matches.length > 0) {
       combo = 0;
       moves--;
+      document.getElementById("movesNum").innerText = moves;
       update();
     } else {
       swap(x1, y1, x, y);
@@ -1108,6 +1111,7 @@ c.addEventListener("touchend", e => {
 
       if (result.matches.length > 0) {
         moves--;
+        document.getElementById("movesNum").innerText = moves;
         update();
       } else {
         swap(x1, y1, x, y);
