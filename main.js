@@ -743,20 +743,28 @@ function remove(m, bombPos){
 // ===== 落下 =====
 function drop(){
 
-  for(let x=0;x<size;x++){
+  for(let x = 0; x < size; x++){
 
-    let col = [];
+    let writeY = size - 1;
 
-    // 下から集める
-    for(let y=size-1;y>=0;y--){
+    // ✅ 下から順に埋める
+    for(let y = size - 1; y >= 0; y--){
+
       if(board[y][x] !== null){
-        col.push(board[y][x]);
+        board[writeY][x] = board[y][x];
+
+        // ✅ 動いたら元を消す
+        if(writeY !== y){
+          board[y][x] = null;
+        }
+
+        writeY--;
       }
     }
 
-    // 下から詰める
-    for(let y=size-1;y>=0;y--){
-      board[y][x] = col[size-1-y] || null;
+    // ✅ 上を全部空にする
+    for(let y = writeY; y >= 0; y--){
+      board[y][x] = null;
     }
 
   }
