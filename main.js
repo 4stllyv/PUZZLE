@@ -511,16 +511,18 @@ function draw() {
   if (combo > 1 && comboTimer > 0) {
 
     let offset = (c.width - cell * size) / 2;
+    ctx.globalAlpha = comboTimer / 60;
 
     ctx.globalAlpha = 1;
     ctx.fillStyle = "#fff";
-    ctx.font = "bold 24px sans-serif";
+    ctx.font = "bold 40px sans-serif";
     ctx.textAlign = "center";
 
     let x = comboX * cell + offset + cell / 2;
     let y = comboY * cell + offset - 10;
 
     ctx.fillText(combo + " COMBO!", x, y);
+    ctx.globalAlpha = 1;
   }
 
   ctx.restore();
@@ -575,7 +577,7 @@ function updateAnim() {
     }
   }
 
-  fallAnim.forEach(f => f.progress += 0.1);
+  fallAnim.forEach(f => f.progress += 0.07);
   fallAnim = fallAnim.filter(f => f.progress < 1);
 }
 
@@ -752,6 +754,24 @@ let comboY = 0;
 function remove(m, bombPos){
 
   combo++;
+  comboTimer = 60;
+  
+  comboX = m[0].x;
+  comboY = m[0].y;
+
+  
+  let el = document.getElementById("comboText");
+
+  if(combo > 1){
+    el.innerText = combo + " COMBO!";
+    el.style.opacity = 1;
+
+    setTimeout(() => {
+      el.style.opacity = 0;
+    }, 600);
+  }
+
+
 
   // ✅ 実際に消えた数で計算
   let count = m.length;
@@ -985,7 +1005,7 @@ function update() {
   setInputEnabled(false);
 
   highlight = m;
-  highlightTimer = 8;
+  highlightTimer = 18;
 
   setTimeout(() => {
 
@@ -1011,7 +1031,7 @@ function update() {
 
     }, 16);
 
-  }, 150);
+  }, 250);
 
   return;
 }
@@ -1019,7 +1039,9 @@ function update() {
   // =========================
   // ✅ マッチない（完全停止候補）
   // =========================
+  if(m.length === 0){
   combo = 0;
+  }
 
   if (!hasMove()) {
     do {
@@ -1291,6 +1313,10 @@ particles = particles.filter(p => p.life > 0);
     highlightTimer--;
   }else{
     highlight = [];
+  }
+
+  if(comboTimer > 0){
+  comboTimer--;
   }
 
   requestAnimationFrame(loop);
