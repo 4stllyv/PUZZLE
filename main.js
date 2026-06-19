@@ -1011,7 +1011,6 @@ c.addEventListener("mouseup", e => {
   // ✅ 爆弾タップ優先
   if (dx === 0 && dy === 0) {
     if (board[y][x] === "bomb") {
-      moves--;
       document.getElementById("movesNum").innerText = moves;
       explode(x, y);
       update();
