@@ -341,7 +341,6 @@ function init() {
         board[y][x] = c;
       }
     }
-
   } while (!hasMove()); // ✅ ここが神ポイント
 }
 
@@ -385,20 +384,21 @@ function draw() {
     shake--;
   }
 
-  // 落下描画
+  // ===== 落下描画 =====
   fallAnim.forEach(f => {
     let yPos = f.from + (f.to - f.from) * f.progress;
 
-    let px = f.x * cell + 10;
-    let py = yPos * cell + 10;
+    let offset = (c.width - cell * size) / 2;
+
+    let px = f.x * cell + offset;
+    let py = yPos * cell + offset;
 
     let b = f.type;
 
     ctx.drawImage(imgs[b], px, py, cell - 4, cell - 4);
   });
 
-  // 通常描画
-  // 通常描画
+  // ===== 通常描画 =====
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
 
@@ -407,7 +407,6 @@ function draw() {
       let b = board[y][x];
       if (!b) continue;
 
-      // ✅ 基本サイズ
       let baseSize = cell - 4;
       let size2 = baseSize;
 
@@ -416,14 +415,11 @@ function draw() {
       let px = x * cell + offset;
       let py = y * cell + offset;
 
-      // ✅ ハイライト（光る＆拡大）
+      // ハイライト
       if (highlightTimer > 0 && highlight.some(p => p.x === x && p.y === y)) {
         size2 = baseSize * 1.2;
-
-        // ✅ 中心補正（超重要）
         px -= (size2 - baseSize) / 2;
         py -= (size2 - baseSize) / 2;
-
         ctx.globalAlpha = 0.7;
       }
 
@@ -434,11 +430,9 @@ function draw() {
         let cy = py + size2 / 2;
 
         let t = Date.now() / 300;
-
         let pulse = (Math.sin(t) + 1) / 2;
         pulse = Math.pow(pulse, 2.5);
 
-        // ✅ サイズ控えめ
         let glowSize = size2 + pulse * 4;
 
         ctx.save();
@@ -449,7 +443,6 @@ function draw() {
           cx, cy, glowSize
         );
 
-        // ✅ 明るさを大幅に抑える（ここがポイント）
         glow.addColorStop(0, `rgba(255,255,220,${0.15 + pulse * 0.35})`);
         glow.addColorStop(0.5, `rgba(255,220,120,${0.08 + pulse * 0.25})`);
         glow.addColorStop(1, "rgba(255,200,0,0)");
@@ -465,40 +458,74 @@ function draw() {
         ctx.drawImage(imgs[b], px, py, size2, size2);
       }
 
-
-      // ✅ 必ず戻す！！
       ctx.globalAlpha = 1;
-    }
-    if (showEnd) {
-
-      ctx.fillStyle = "rgba(0,0,0,0.6)";
-      ctx.fillRect(0, 0, c.width, c.height);
-
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 40px sans-serif";
-      ctx.textAlign = "center";
-
-      ctx.fillText("終了！", c.width / 2, c.height / 2);
-    }
-
-    // ✅ コンボ表示（ここに追加！）
-    if (combo > 1 && comboTimer > 0) {
-
-      let offset = (c.width - cell * size) / 2;
-
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 24px sans-serif";
-      ctx.textAlign = "center";
-
-      let x = comboX * cell + offset + cell / 2;
-      let y = comboY * cell + offset - 10;
-
-      ctx.fillText(combo + " COMBO!", x, y);
     }
   }
+
+  // ===== ✅ ★ここが超重要（爆発エフェクト） =====
+  boomAnim.forEach(b => {
+
+    let offset = (c.width - cell * size) / 2;
+
+    let cx = b.x * cell + offset + cell / 2;
+    let cy = b.y * cell + offset + cell / 2;
+
+    let grad = ctx.createRadialGradient(
+      cx, cy, 0,
+      cx, cy, b.radius
+    );
+
+    grad.addColorStop(0, `rgba(255,255,200,${b.alpha})`);
+    grad.addColorStop(1, "rgba(255,120,0,0)");
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, b.radius, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  // ✅ 破片描画
+  particles.forEach(p => {
+
+    let offset = (c.width - cell * size) / 2;
+
+    let px = p.x * cell + offset + cell/2;
+    let py = p.y * cell + offset + cell/2;
+
+    ctx.fillStyle = `rgba(255,200,100,${p.life})`;
+
+    ctx.fillRect(px, py, 4, 4);
+  });
+
+  // 終了表示
+  if (showEnd) {
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(0, 0, c.width, c.height);
+
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 40px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("終了！", c.width / 2, c.height / 2);
+  }
+
+  // コンボ
+  if (combo > 1 && comboTimer > 0) {
+
+    let offset = (c.width - cell * size) / 2;
+
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 24px sans-serif";
+    ctx.textAlign = "center";
+
+    let x = comboX * cell + offset + cell / 2;
+    let y = comboY * cell + offset - 10;
+
+    ctx.fillText(combo + " COMBO!", x, y);
+  }
+
   ctx.restore();
 }
+
 
 function drawBomb(x, y, size) {
 
@@ -548,7 +575,7 @@ function updateAnim() {
     }
   }
 
-  fallAnim.forEach(f => f.progress += 0.05);
+  fallAnim.forEach(f => f.progress += 0.1);
   fallAnim = fallAnim.filter(f => f.progress < 1);
 }
 
@@ -595,7 +622,7 @@ function find(){
           }
 
           // ✅ 5以上 → 爆弾
-          if(count >= 5 && !bombTriggered && !didLine){
+          if(count >= 5 && !bombTriggered && !didLine && !isBombChain){
             let center = group[Math.floor(group.length/2)];
             bombPos.push(center);
           }
@@ -641,7 +668,7 @@ function find(){
           }
 
           // ✅ 5以上 → 爆弾
-          if(count >= 5 && !bombTriggered && !didLine){
+          if(count >= 5 && !bombTriggered && !didLine && !isBombChain){
             let center = group[Math.floor(group.length/2)];
             bombPos.push(center);
           }
@@ -759,14 +786,28 @@ m.forEach(p=>{
 // ===== 落下 =====
 function drop(){
 
+  fallAnim = []; // ←毎回リセット
+
   for(let x = 0; x < size; x++){
 
     let writeY = size - 1;
 
-    // ✅ 下から詰める
     for(let y = size - 1; y >= 0; y--){
 
       if(board[y][x] !== null){
+
+        // 落ちる必要あるときだけ
+        if(writeY !== y){
+
+          fallAnim.push({
+            x: x,
+            from: y,
+            to: writeY,
+            type: board[y][x],
+            progress: 0
+          });
+        }
+
         board[writeY][x] = board[y][x];
 
         if(writeY !== y){
@@ -777,18 +818,9 @@ function drop(){
       }
     }
 
-    // ✅ 上を全部null
     for(let y = writeY; y >= 0; y--){
       board[y][x] = null;
     }
-
-    // ✅ ★ここ追加！！（重要）
-    for(let y = 0; y < size; y++){
-      if(board[y][x] === undefined){
-        board[y][x] = null;
-      }
-    }
-
   }
 }
 
@@ -815,13 +847,16 @@ function swap(x1, y1, x2, y2) {
 // ===== 爆弾 =====
 
 let bombTriggered = false; // 爆弾で消えたか
+let boomAnim = [];
+let isBombChain = false;
+let particles = [];
+
 
 function explode(x, y) {
 
-  bombTriggered = true;
-
   let list = [{x, y}];
   let visited = {};
+  let removed = {};
 
   while(list.length){
 
@@ -831,7 +866,6 @@ function explode(x, y) {
     if(visited[key]) continue;
     visited[key] = true;
 
-    // ⭐️ 爆発範囲（3×3）
     for(let dy = -1; dy <= 1; dy++){
       for(let dx = -1; dx <= 1; dx++){
 
@@ -840,16 +874,42 @@ function explode(x, y) {
 
         if(nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
 
-        // ✅ ここが重要！！！
+        let k = nx + "_" + ny;
+
         if(board[ny][nx] === "bomb"){
-          list.push({x:nx, y:ny}); // 💣 さらに爆発
+          list.push({x:nx, y:ny});
         }
 
         board[ny][nx] = null;
+        // ✅ 爆発エフェクト追加（各マス）
+        boomAnim.push({
+          x: nx,
+          y: ny,
+          radius: 0,
+          max: cell * 1.2,
+          alpha: 0.6
+        });
+        flash = 1;     // 画面が一瞬白くなる
+        shake = 15;    // 揺れを強く
+        // ✅ 破片追加
+        for(let i=0;i<6;i++){
+          particles.push({
+            x: nx,
+            y: ny,
+            vx: (Math.random()-0.5)*4,
+            vy: (Math.random()-0.5)*4,
+            life: 1
+          });
+        }
+        removed[k] = true;
       }
     }
   }
+
+  // ✅ 消した数を返す
+  return Object.keys(removed).length;
 }
+
 
 function getGroups() {
 
@@ -921,37 +981,40 @@ function update() {
   // =========================
   if (m.length) {
 
-    isBusy = true;              // ✅ 入力ロック
-    setInputEnabled(false);     // ✅ 入力完全停止
+  isBusy = true;
+  setInputEnabled(false);
 
-    highlight = m;
-    highlightTimer = 8;
+  highlight = m;
+  highlightTimer = 8;
 
-    setTimeout(() => {
+  setTimeout(() => {
 
-      remove(m, data.bombPos);
+    remove(m, data.bombPos);
 
-      setTimeout(() => {
+    // ✅ まず落とす
+    drop();
 
+    // ✅ ★ここが追加（アニメ終わるの待つ）
+    let wait = setInterval(() => {
+
+      if(fallAnim.length === 0){
+
+        clearInterval(wait);
+
+        fill();
         drop();
 
         setTimeout(() => {
-
-          fill();
-
-          // ✅ ここ重要：解除しない
-          setTimeout(() => {
-            update();  // 次の連鎖へ
-          }, 200);
-
+          update();
         }, 200);
+      }
 
-      }, 200);
+    }, 16);
 
-    }, 150);
+  }, 150);
 
-    return;
-  }
+  return;
+}
 
   // =========================
   // ✅ マッチない（完全停止候補）
@@ -1011,9 +1074,39 @@ c.addEventListener("mouseup", e => {
   // ✅ 爆弾タップ優先
   if (dx === 0 && dy === 0) {
     if (board[y][x] === "bomb") {
-      document.getElementById("movesNum").innerText = moves;
-      explode(x, y);
-      update();
+      isBombChain = true;
+      let removed = explode(x, y);
+
+      score += removed * 10;
+      
+      setTimeout(() => {
+
+      drop();
+
+      // ✅ ★ここ重要：落ち終わるの待つ
+      let wait = setInterval(() => {
+
+        if(fallAnim.length === 0){
+
+          clearInterval(wait);
+
+          fill();
+          drop();
+
+          isBombChain = false;
+
+          setTimeout(() => {
+            update();
+          }, 200);
+        }
+
+      }, 16);
+
+    }, 120);
+
+
+      highlightTimer = 0;
+
       swipeStart = null;
       return;
     }
@@ -1083,8 +1176,38 @@ c.addEventListener("touchend", e => {
   // ✅ 追加：その場タップ（爆弾発動）
   if (dx === 0 && dy === 0) {
     if (board[y][x] === "bomb") {
-      explode(x, y);
-      update();
+      isBombChain = true;
+      let removed = explode(x, y);
+
+      score += removed * 10;
+
+      setTimeout(() => {
+
+      drop();
+
+      // ✅ ★ここ重要：落ち終わるの待つ
+      let wait = setInterval(() => {
+
+        if(fallAnim.length === 0){
+
+          clearInterval(wait);
+
+          fill();
+          drop();
+
+          isBombChain = false;
+
+          setTimeout(() => {
+            update();
+          }, 200);
+        }
+
+      }, 16);
+
+    }, 120);
+
+      highlightTimer = 0;
+
       swipeStart = null;
       return;
     }
@@ -1131,6 +1254,23 @@ function loop(){
 
   draw();
   updateAnim();
+
+  // ✅ 爆発アニメ更新
+  boomAnim.forEach(b => {
+    b.radius += 8;
+    b.alpha -= 0.06;
+  });
+  // ✅ 破片更新
+  particles.forEach(p => {
+    p.x += p.vx * 0.1;
+    p.y += p.vy * 0.1;
+    p.life -= 0.03;
+  });
+
+particles = particles.filter(p => p.life > 0);
+
+  boomAnim = boomAnim.filter(b => b.alpha > 0);
+
 
   // ✅ マッチあるかチェック
   let hasMatch = find().matches.length > 0;
