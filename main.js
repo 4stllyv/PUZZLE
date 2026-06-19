@@ -759,19 +759,6 @@ function remove(m, bombPos){
   comboX = m[0].x;
   comboY = m[0].y;
 
-  
-  let el = document.getElementById("comboText");
-
-  if(combo > 1){
-    el.innerText = combo + " COMBO!";
-    el.style.opacity = 1;
-
-    setTimeout(() => {
-      el.style.opacity = 0;
-    }, 600);
-  }
-
-
 
   // ✅ 実際に消えた数で計算
   let count = m.length;
