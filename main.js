@@ -1187,7 +1187,7 @@ c.addEventListener("mouseup", e => {
   let dy = y - swipeStart.y;
 
   // ✅ 爆弾タップ優先
-  if (dx === 0 && dy === 0) {
+  if (Math.abs(dx) + Math.abs(dy) <= 1) {
     if (board[y][x] === "bomb") {
       isBombChain = true;
       let removed = explode(x, y);
@@ -1289,7 +1289,7 @@ c.addEventListener("touchend", e => {
   let dy = y - swipeStart.y;
 
   // ✅ 追加：その場タップ（爆弾発動）
-  if (dx === 0 && dy === 0) {
+  if (Math.abs(dx) + Math.abs(dy) <= 1) {
     if (board[y][x] === "bomb") {
       isBombChain = true;
       let removed = explode(x, y);
