@@ -507,23 +507,6 @@ function draw() {
     ctx.fillText("終了！", c.width / 2, c.height / 2);
   }
 
-  // コンボ
-  if (combo > 1 && comboTimer > 0) {
-
-    let offset = (c.width - cell * size) / 2;
-    ctx.globalAlpha = comboTimer / 60;
-
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 40px sans-serif";
-    ctx.textAlign = "center";
-
-    let x = comboX * cell + offset + cell / 2;
-    let y = comboY * cell + offset - 10;
-
-    ctx.fillText(combo + " COMBO!", x, y);
-    ctx.globalAlpha = 1;
-  }
-
   ctx.restore();
 }
 
@@ -749,14 +732,43 @@ function find(){
 // ===== 消し =====
 let comboX = 0;
 let comboY = 0;
+let comboTimeout = null;
+let displayCombo = 0;
+
+
 
 function remove(m, bombPos){
 
   combo++;
+  displayCombo = combo;
   comboTimer = 60;
   
   comboX = m[0].x;
   comboY = m[0].y;
+
+  let el = document.getElementById("comboText");
+
+if(combo > 1){
+
+  // ✅ ★前のタイマー消す
+  if(comboTimeout){
+    clearTimeout(comboTimeout);
+  }
+
+  el.innerText = displayCombo + " COMBO!";
+  el.style.opacity = 1;
+  el.style.transform = "translate(-50%, -60%) scale(1.2)";
+
+  setTimeout(() => {
+    el.style.transform = "translate(-50%, -50%) scale(1)";
+  }, 50);
+
+  // ✅ ★これを変数に入れる
+  comboTimeout = setTimeout(() => {
+    el.style.opacity = 0;
+  }, 800);
+}
+
 
 
   // ✅ 実際に消えた数で計算
@@ -1027,6 +1039,7 @@ function update() {
   // =========================
   if(m.length === 0){
   combo = 0;
+  displayCombo = 0;
   }
 
   if (!hasMove()) {
