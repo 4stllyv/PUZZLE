@@ -99,6 +99,7 @@ function startGame() {
 
   // ✅ 盤面初期化
   init();
+  update();
 
   // ✅ 画面切り替え
   show("gameScreen");
@@ -128,6 +129,7 @@ function retryGame() {
 
   // ✅ 盤面作り直し
   init();
+  update();
 
   // ✅ UIリセット
   document.getElementById("scoreNum").innerText = "0";
