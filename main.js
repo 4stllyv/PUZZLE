@@ -1160,7 +1160,7 @@ let swipeStart = null;
 
 // --- PC ---
 c.addEventListener("mousedown", e => {
-  if (isGameOver || isBusy) {
+  if (isGameOver || isBusy || moves <= 0) {
     swipeStart = null;
     return;
   }
@@ -1237,7 +1237,7 @@ c.addEventListener("mouseup", e => {
 
     let result = find();
 
-    if (result.matches.length > 0) {
+    if (result.matches.length > 0 && moves > 0) {
       combo = 0;
       moves--;
       document.getElementById("movesNum").innerText = moves;
@@ -1275,7 +1275,7 @@ c.addEventListener("touchstart", e => {
 
 c.addEventListener("touchend", e => {
   e.preventDefault();
-  if(!swipeStart || isBusy) return;
+  if (!swipeStart || isBusy || moves <= 0) return;
 
   let r = c.getBoundingClientRect();
   let t = e.changedTouches[0];
@@ -1374,7 +1374,7 @@ c.addEventListener("touchend", e => {
 
       let result = find();
 
-      if (result.matches.length > 0) {
+      if (result.matches.length > 0 && moves > 0) {
         moves--;
         document.getElementById("movesNum").innerText = moves;
         update();
