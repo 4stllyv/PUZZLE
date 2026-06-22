@@ -418,6 +418,8 @@ cell = Math.floor(c.width / size);
 c.width = cell * size;
 c.height = cell * size;
 
+let zoom = 1;
+
 function draw() {
   ctx.clearRect(0, 0, c.width, c.height);
 
@@ -429,6 +431,12 @@ function draw() {
   }
 
   ctx.save();
+
+  ctx.scale(zoom, zoom);
+        ctx.translate(
+        c.width * (1 - zoom) / 2,
+        c.height * (1 - zoom) / 2
+      );
 
   // シェイク
   if (shake > 0) {
@@ -937,6 +945,7 @@ function explode(x, y) {
   let list = [{x, y}];
   let visited = {};
   let removed = {};
+  zoom = 1.2;
 
   while(list.length){
 
@@ -1362,6 +1371,8 @@ c.addEventListener("touchend", e => {
 let idleTimer = 0;
 
 function loop(){
+
+  zoom += (1 - zoom) * 0.2;
 
   draw();
   updateAnim();
