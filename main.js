@@ -55,26 +55,11 @@ document.body.addEventListener("touchmove", e => {
 
 db.ref("scores").on("value", snapshot => {
 
-  let data = snapshot.val();
+  rankData = snapshot.val(); // ✅ 保存
+  renderRanking(rankData);   // ✅ 表示
 
-  let text = "🌍 世界ランク\n";
-
-  if (!data) {
-    text += "まだスコアなし";
-  } else {
-
-    let arr = Object.values(data);
-    arr.sort((a, b) => b.score - a.score);
-
-    arr.slice(0, 5).forEach((v, i) => {
-      text += (i + 1) + ". " + v.name + " : " + v.score + "\n";
-    });
-
-
-  }
-
-  document.getElementById("globalRank").innerText = text;
 });
+
 
 
 let started = false;
@@ -247,6 +232,14 @@ function gameOver() {
     show("result");
     showEnd = false; // ✅ 念のため戻す
   }, 1000); // ← 表示時間（1秒）
+
+  let best = localStorage.getItem("best") || 0;
+
+  if(score > best){
+    localStorage.setItem("best", score);
+    document.getElementById("final").innerText += "\n✨ NEW RECORD!";
+  }
+
 }
 
 // ===== 素材 =====
@@ -275,6 +268,65 @@ let comboTimer = 0;
 let board = [], score = 0, moves = 30, combo = 0;
 let swapAnim = null, fallAnim = [];
 let flash = 0, shake = 0;
+let rankMode = "all";
+let rankData = null;
+
+function setRankMode(mode){
+  rankMode = mode;
+  renderRanking(rankData);
+}
+
+function renderRanking(data){
+
+  let text = "";
+
+  if(rankMode === "all"){
+    text = "🌍 総合ランキング\n";
+  }else{
+    text = "📅 週間ランキング\n";
+  }
+
+  if (!data) {
+    text += "まだスコアなし";
+  } else {
+
+    let arr = Object.values(data);
+
+    if(rankMode === "week"){
+      const now = new Date();
+      let day = now.getDay();
+      let diff = now.getDate() - day + (day === 0 ? -6 : 1);
+
+      let monday = new Date(now.setDate(diff));
+      monday.setHours(0,0,0,0);
+
+      let start = monday.getTime();
+
+      arr = arr.filter(v => v.time >= start);
+    }
+
+    arr.sort((a, b) => b.score - a.score);
+
+    arr.slice(0, 5).forEach((v, i) => {
+
+    let rank = i + 1;
+
+    if(i === 0){
+      text += "🥇 <span style='font-weight: bold; text-shadow: 0 0 10px gold;'>" 
+       + v.name + "</span> : " + v.score + "<br>";
+    } else if(i === 1){
+      text += "🥈" + v.name + "</span> : " + v.score + "<br>";
+    }else if(i === 2){
+      text += "🥉" + v.name + "</span> : " + v.score + "<br>";
+    }else{
+      text += rank + ". " + v.name + " : " + v.score + "<br>";
+    }
+
+  });
+  }
+
+  document.getElementById("globalRank").innerHTML = text;
+}
 
 // ===== 初期化 =====
 function rand() {
@@ -373,7 +425,7 @@ function draw() {
   if (flash > 0) {
     ctx.fillStyle = "rgba(255,255,255," + flash + ")";
     ctx.fillRect(0, 0, c.width, c.height);
-    flash -= 0.05;
+    flash -= 0.08;
   }
 
   ctx.save();
@@ -756,6 +808,15 @@ if(combo > 1){
   }
 
   el.innerText = displayCombo + " COMBO!";
+  // ✅ 強さで色変える
+  if(combo >= 8){
+    el.style.color = "red";
+  }else if(combo >= 5){
+    el.style.color = "yellow";
+  }else{
+    el.style.color = "white";
+  }
+
   el.style.opacity = 1;
   el.style.transform = "translate(-50%, -60%) scale(1.2)";
 
@@ -774,7 +835,8 @@ if(combo > 1){
   // ✅ 実際に消えた数で計算
   let count = m.length;
 
-  score += count * 10 * combo;
+  score += count * 10 * (1 + combo * 0.5);
+
 
   flash = 0.8;
   shake = 10;
@@ -904,11 +966,11 @@ function explode(x, y) {
           x: nx,
           y: ny,
           radius: 0,
-          max: cell * 1.2,
+          max: cell * 2,
           alpha: 0.6
         });
-        flash = 1;     // 画面が一瞬白くなる
-        shake = 15;    // 揺れを強く
+        flash = 1.5;   // ✅ 強く光る
+        shake = 25;    // ✅ 強く揺れる
         // ✅ 破片追加
         for(let i=0;i<6;i++){
           particles.push({
@@ -1306,7 +1368,7 @@ function loop(){
 
   // ✅ 爆発アニメ更新
   boomAnim.forEach(b => {
-    b.radius += 8;
+    b.radius += 14;
     b.alpha -= 0.06;
   });
   // ✅ 破片更新
