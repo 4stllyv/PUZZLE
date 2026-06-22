@@ -116,7 +116,6 @@ function retryGame() {
   ending = false;
   showEnd = false;
 
-
   // ✅ 状態リセット
   score = 0;
   displayScore = 0;
@@ -134,6 +133,13 @@ function retryGame() {
 
   // ✅ ゲーム画面に戻る
   show("gameScreen");
+
+  // ✅ 安定化 (超重要)
+  isBusy = false;
+  idleTimer = 0;
+  highlightTimer = 0;
+  swipeStart = null;   // ✅ 追加
+  ending = false;      // ✅ 念押し
 }
 
 function goTitle() {
@@ -865,7 +871,11 @@ m.forEach(p=>{
 
   // ✅ 爆弾なら爆発させる！
   if(board[p.y][p.x] === "bomb"){
-    explode(p.x, p.y);
+  let bombCells = explode(p.x, p.y);
+
+  bombCells.forEach(b => {
+    board[b.y][b.x] = null;
+  });
   }
 
   board[p.y][p.x] = null;
@@ -986,7 +996,7 @@ function explode(x, y) {
           isMega = true;
         }
 
-        board[ny][nx] = null;
+        removed[k] = {x: nx, y: ny};
         // ✅ 爆発エフェクト追加（各マス）
         boomAnim.push({
           x: nx,
@@ -1007,7 +1017,6 @@ function explode(x, y) {
             life: 1
           });
         }
-        removed[k] = true;
       }
     }
     
@@ -1019,8 +1028,7 @@ function explode(x, y) {
 
   }
 
-  // ✅ 消した数を返す
-  return Object.keys(removed).length;
+  return Object.values(removed);
 }
 
 
@@ -1078,6 +1086,12 @@ function update() {
 
   let data = find();
   let m = data.matches;
+
+    // ✅ 強制終了チェック（最優先）
+  if (moves <= 0 && m.length === 0 && addScore <= 0 && !isBusy && highlightTimer <= 0) {
+  gameOver();
+  return;
+  }
 
   // ✅ ハイライト中は処理止める（演出用）
   if (highlightTimer > 0) {
@@ -1137,18 +1151,18 @@ function update() {
   displayCombo = 0;
   }
 
-  if (!hasMove()) {
-    do {
-      shuffle();
-    } while (!hasMove());
-    return;
-  }
-
-  // ✅ ゲーム終了処理
+  // ✅ 先に終了判定！！
   if (ending && m.length === 0 && addScore <= 0) {
     gameOver();
     return;
   }
+
+  // ✅ そのあとシャッフル
+  if (!hasMove()) {
+    do { shuffle(); } while (!hasMove());
+    return;
+  }
+
 
   // ✅ UI更新
   document.getElementById("movesNum").innerText = moves;
@@ -1186,19 +1200,29 @@ c.addEventListener("mouseup", e => {
   let dx = x - swipeStart.x;
   let dy = y - swipeStart.y;
 
-  // ✅ 爆弾タップ優先
-  if (Math.abs(dx) + Math.abs(dy) <= 1) {
-    if (board[y][x] === "bomb") {
-      isBombChain = true;
-      let removed = explode(x, y);
+  // ✅ 範囲外防止
+  if (x < 0 || y < 0 || x >= size || y >= size) return;
 
-      score += removed * 10;
-      
-      setTimeout(() => {
+  // ✅ ★最優先：爆弾なら即発動！！
+  if (board[y][x] === "bomb") {
+
+    isBombChain = true;
+
+    let cells = explode(x, y);
+
+    cells.forEach(b => {
+      board[b.y][b.x] = null;
+    });
+
+    let gain = cells.length * 10 * (1 + combo);
+
+    score += gain;
+    addScore += gain;
+
+    setTimeout(() => {
 
       drop();
 
-      // ✅ ★ここ重要：落ち終わるの待つ
       let wait = setInterval(() => {
 
         if(fallAnim.length === 0){
@@ -1219,12 +1243,9 @@ c.addEventListener("mouseup", e => {
 
     }, 120);
 
-
-      highlightTimer = 0;
-
-      swipeStart = null;
-      return;
-    }
+    highlightTimer = 0;
+    swipeStart = null;
+    return; // ✅ 超重要：ここで終了
   }
 
   // 通常スワップ
@@ -1292,9 +1313,16 @@ c.addEventListener("touchend", e => {
   if (Math.abs(dx) + Math.abs(dy) <= 1) {
     if (board[y][x] === "bomb") {
       isBombChain = true;
-      let removed = explode(x, y);
+      let cells = explode(x, y);
 
-      score += removed * 10;
+      cells.forEach(b => {
+        board[b.y][b.x] = null;
+      });
+
+      let gain = cells.length * 10 * (1 + combo);
+
+      score += gain;
+      addScore += gain; 
 
       setTimeout(() => {
 
@@ -1339,8 +1367,16 @@ c.addEventListener("touchend", e => {
 
   isBombChain = true;
 
-  let removed = explode(x, y);
-  score += removed * 10;
+  let cells = explode(x, y);
+
+  cells.forEach(b => {
+    board[b.y][b.x] = null;
+  });
+
+  let gain = cells.length * 10 * (1 + combo);
+
+  score += gain;
+  addScore += gain;
 
   setTimeout(() => {
 
