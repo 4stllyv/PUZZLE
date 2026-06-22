@@ -70,7 +70,7 @@ function startGame() {
 
   ending = false;
   showEnd = false;
-
+  gameId++;
 
 
   const name = document.getElementById("name").value.trim();
@@ -123,6 +123,8 @@ function retryGame() {
   moves = 30;
   combo = 0;
   isGameOver = false;
+  gameId++;
+
 
   // ✅ 盤面作り直し
   init();
@@ -282,6 +284,7 @@ let swapAnim = null, fallAnim = [];
 let flash = 0, shake = 0;
 let rankMode = "all";
 let rankData = null;
+let gameId = 0;
 
 function setRankMode(mode){
   rankMode = mode;
@@ -1080,17 +1083,23 @@ let isBusy = false;
 
 function update() {
 
-  if (moves <= 0) {
-    ending = true;
-  }
-
   let data = find();
   let m = data.matches;
 
-    // ✅ 強制終了チェック（最優先）
-  if (moves <= 0 && m.length === 0 && addScore <= 0 && !isBusy && highlightTimer <= 0) {
-  gameOver();
-  return;
+  // ✅ 最強終了チェック
+  if (
+    moves <= 0 &&
+    m.length === 0 &&
+    addScore <= 0 &&
+    highlightTimer <= 0
+  ) {
+    isBusy = false;   // ← 強制解除ポイント🔥
+    gameOver();
+    return;
+  }
+
+  if (moves <= 0) {
+    ending = true;
   }
 
   // ✅ ハイライト中は処理止める（演出用）
@@ -1113,8 +1122,11 @@ function update() {
 
   highlight = m;
   highlightTimer = 18;
+  let id = gameId;
 
   setTimeout(() => {
+
+    if(id !== gameId) return;
 
     remove(m, data.bombPos);
 
@@ -1132,7 +1144,11 @@ function update() {
         drop();
 
         setTimeout(() => {
-          update();
+          
+        if(id === gameId){
+            update();
+          }
+
         }, 200);
       }
 
@@ -1149,12 +1165,6 @@ function update() {
   if(m.length === 0){
   combo = 0;
   displayCombo = 0;
-  }
-
-  // ✅ 先に終了判定！！
-  if (ending && m.length === 0 && addScore <= 0) {
-    gameOver();
-    return;
   }
 
   // ✅ そのあとシャッフル
@@ -1218,8 +1228,11 @@ c.addEventListener("mouseup", e => {
 
     score += gain;
     addScore += gain;
+    let id = gameId;
 
     setTimeout(() => {
+
+      if(id !== gameId) return;
 
       drop();
 
@@ -1235,7 +1248,11 @@ c.addEventListener("mouseup", e => {
           isBombChain = false;
 
           setTimeout(() => {
-            update();
+            
+          if(id === gameId){
+              update();
+            }
+
           }, 200);
         }
 
@@ -1323,8 +1340,11 @@ c.addEventListener("touchend", e => {
 
       score += gain;
       addScore += gain; 
+      let id = gameId;
 
       setTimeout(() => {
+
+      if(id !== gameId) return;
 
       drop();
 
@@ -1341,7 +1361,11 @@ c.addEventListener("touchend", e => {
           isBombChain = false;
 
           setTimeout(() => {
-            update();
+            
+          if(id === gameId){
+              update();
+            }
+
           }, 200);
         }
 
@@ -1377,8 +1401,11 @@ c.addEventListener("touchend", e => {
 
   score += gain;
   addScore += gain;
+  let id = gameId;
 
   setTimeout(() => {
+
+    if(id !== gameId) return;
 
     drop();
 
@@ -1394,7 +1421,11 @@ c.addEventListener("touchend", e => {
         isBombChain = false;
 
         setTimeout(() => {
-          update();
+          
+        if(id === gameId){
+            update();
+          }
+
         }, 200);
       }
 
