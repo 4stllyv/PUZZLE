@@ -852,7 +852,7 @@ if(combo > 1){
   // ✅ 実際に消えた数で計算
   let count = m.length;
 
-  let gain = count * 10 * (1 + combo * 0.5);
+  let gain = count * 10 * (1 + combo);
 
   score += gain;       // 最終スコア
   addScore += gain;    // 表示用に積む
