@@ -947,6 +947,8 @@ function explode(x, y) {
   let removed = {};
   zoom = 1.2;
 
+  let isMega = false;
+
   while(list.length){
 
     let p = list.pop();
@@ -955,8 +957,10 @@ function explode(x, y) {
     if(visited[key]) continue;
     visited[key] = true;
 
-    for(let dy = -1; dy <= 1; dy++){
-      for(let dx = -1; dx <= 1; dx++){
+    let range = isMega ? 2 : 1;
+
+    for(let dy = -range; dy <= range; dy++){
+      for(let dx = -range; dx <= range; dx++){
 
         let nx = p.x + dx;
         let ny = p.y + dy;
@@ -967,6 +971,7 @@ function explode(x, y) {
 
         if(board[ny][nx] === "bomb"){
           list.push({x:nx, y:ny});
+          isMega = true;
         }
 
         board[ny][nx] = null;
@@ -993,6 +998,13 @@ function explode(x, y) {
         removed[k] = true;
       }
     }
+    
+    if(isMega){
+      flash = 2;
+      shake = 35;
+      zoom = 1.3;
+    }
+
   }
 
   // ✅ 消した数を返す
