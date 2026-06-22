@@ -87,6 +87,8 @@ function startGame() {
 
   // ✅ 状態リセット
   score = 0;
+  displayScore = 0;
+  addScore = 0;
   moves = 30;
   combo = 0;
   isGameOver = false;
@@ -117,6 +119,8 @@ function retryGame() {
 
   // ✅ 状態リセット
   score = 0;
+  displayScore = 0;
+  addScore = 0;
   moves = 30;
   combo = 0;
   isGameOver = false;
@@ -140,6 +144,8 @@ function goTitle() {
 
   // ✅ 状態リセット
   score = 0;
+  displayScore = 0;
+  addScore = 0;
   moves = 30;
   combo = 0;
   isGameOver = false;
@@ -212,7 +218,7 @@ function gameOver() {
 
   // ✅ スコア表示はここでやっとく
   document.getElementById("final").innerText =
-    "Score: " + score;
+    "Score: " + Math.floor(displayScore);
 
   // ✅ ランキング処理もここでOK
   let r = JSON.parse(localStorage.getItem("rank") || "[]");
@@ -794,6 +800,9 @@ let comboX = 0;
 let comboY = 0;
 let comboTimeout = null;
 let displayCombo = 0;
+let displayScore = 0;
+let addScore = 0;
+
 
 
 
@@ -843,7 +852,10 @@ if(combo > 1){
   // ✅ 実際に消えた数で計算
   let count = m.length;
 
-  score += count * 10 * (1 + combo * 0.5);
+  let gain = count * 10 * (1 + combo * 0.5);
+
+  score += gain;       // 最終スコア
+  addScore += gain;    // 表示用に積む
 
 
   flash = 0.8;
@@ -1133,13 +1145,12 @@ function update() {
   }
 
   // ✅ ゲーム終了処理
-  if (ending && m.length === 0) {
+  if (ending && m.length === 0 && addScore <= 0) {
     gameOver();
     return;
   }
 
   // ✅ UI更新
-  document.getElementById("scoreNum").innerText = score;
   document.getElementById("movesNum").innerText = moves;
 }
 
@@ -1385,6 +1396,15 @@ let idleTimer = 0;
 function loop(){
 
   zoom += (1 - zoom) * 0.2;
+
+  if(addScore > 0){
+    let step = Math.ceil(addScore * 0.2);
+
+    displayScore += step;
+    addScore -= step;
+  }
+
+  document.getElementById("scoreNum").innerText = Math.floor(displayScore);
 
   draw();
   updateAnim();
