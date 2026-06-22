@@ -513,7 +513,6 @@ function draw() {
     let offset = (c.width - cell * size) / 2;
     ctx.globalAlpha = comboTimer / 60;
 
-    ctx.globalAlpha = 1;
     ctx.fillStyle = "#fff";
     ctx.font = "bold 40px sans-serif";
     ctx.textAlign = "center";
@@ -1230,10 +1229,38 @@ c.addEventListener("touchend", e => {
 
     // ✅ スワップ先が爆弾でも発動
     if (board[y][x] === "bomb") {
-      combo = 0;
-      explode(x, y);
-      update();
-    } else {
+
+  isBombChain = true;
+
+  let removed = explode(x, y);
+  score += removed * 10;
+
+  setTimeout(() => {
+
+    drop();
+
+    let wait = setInterval(() => {
+
+      if(fallAnim.length === 0){
+
+        clearInterval(wait);
+
+        fill();
+        drop();
+
+        isBombChain = false;
+
+        setTimeout(() => {
+          update();
+        }, 200);
+      }
+
+    }, 16);
+
+  }, 120);
+
+  return;
+} else {
 
       swap(x1, y1, x, y);
 
