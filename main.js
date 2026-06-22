@@ -287,9 +287,9 @@ function renderRanking(data){
   let text = "";
 
   if(rankMode === "all"){
-    text = "🌍 総合ランキング\n";
+    text = "🌍 総合ランキング<br>";
   }else{
-    text = "📅 週間ランキング\n";
+    text = "📅 週間ランキング<br>";
   }
 
   if (!data) {
