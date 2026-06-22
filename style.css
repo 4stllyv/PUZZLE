@@ -150,6 +150,23 @@ canvas{
   100%{ transform:translateX(-50%) scale(1); opacity:1; }
 }
 
+#comboText {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+
+  font-size: 48px;
+  font-weight: bold;
+  color: white;
+
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+
+  pointer-events: none;
+  z-index: 999;
+}
+
 #gear{
   position:absolute;
   top:10px;
