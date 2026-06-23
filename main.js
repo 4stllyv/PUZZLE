@@ -83,6 +83,11 @@ function startGame() {
     return;
   }
 
+  if (name.length > 8) {
+    alert("名前は8文字以下で入力してください！");
+    return;
+  }
+
   playerName = name;
 
   localStorage.setItem("playerName", name);
@@ -287,61 +292,51 @@ let rankData = null;
 let gameId = 0;
 
 function setRankMode(mode){
+
   rankMode = mode;
+
+  // ✅ ボタンの見た目切り替え
+  document.getElementById("allBtn").classList.remove("active-btn");
+  document.getElementById("weekBtn").classList.remove("active-btn");
+
+  if(mode === "all"){
+    document.getElementById("allBtn").classList.add("active-btn");
+  }else{
+    document.getElementById("weekBtn").classList.add("active-btn");
+  }
+
   renderRanking(rankData);
 }
 
 function renderRanking(data){
 
-  let text = "";
-
-  if(rankMode === "all"){
-    text = "🌍 総合ランキング<br>";
-  }else{
-    text = "📅 週間ランキング<br>";
-  }
+  const box = document.getElementById("globalRank");
+  box.innerHTML = "";
 
   if (!data) {
-    text += "まだスコアなし";
-  } else {
-
-    let arr = Object.values(data);
-
-    if(rankMode === "week"){
-      const now = new Date();
-      let day = now.getDay();
-      let diff = now.getDate() - day + (day === 0 ? -6 : 1);
-
-      let monday = new Date(now.setDate(diff));
-      monday.setHours(0,0,0,0);
-
-      let start = monday.getTime();
-
-      arr = arr.filter(v => v.time >= start);
-    }
-
-    arr.sort((a, b) => b.score - a.score);
-
-    arr.slice(0, 5).forEach((v, i) => {
-
-    let rank = i + 1;
-
-    if(i === 0){
-      text += "🥇 <span style='font-weight: bold; text-shadow: 0 0 10px gold;'>" 
-       + v.name + "</span> : " + v.score + "<br>";
-    } else if(i === 1){
-      text += "🥈" + v.name + "</span> : " + v.score + "<br>";
-    }else if(i === 2){
-      text += "🥉" + v.name + "</span> : " + v.score + "<br>";
-    }else{
-      text += rank + ". " + v.name + " : " + v.score + "<br>";
-    }
-
-  });
+    box.innerHTML = "まだスコアなし";
+    return;
   }
 
-  document.getElementById("globalRank").innerHTML = text;
+  let arr = Object.values(data);
+  arr.sort((a, b) => b.score - a.score);
+
+  arr.slice(0,5).forEach((v,i)=>{
+
+    let div = document.createElement("div");
+    div.className = "rank-item";
+
+    let icon = ["🥇","🥈","🥉"][i] || (i+1);
+
+    div.innerHTML = `
+      <div class="rank-name">${icon} ${v.name}</div>
+      <div class="rank-score">${v.score}</div>
+    `;
+
+    box.appendChild(div);
+  });
 }
+
 
 // ===== 初期化 =====
 function rand() {
@@ -1601,3 +1596,12 @@ function setInputEnabled(flag){
   }
 
 }
+
+document.querySelectorAll("button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    btn.style.transform = "scale(0.9)";
+    setTimeout(() => {
+      btn.style.transform = "";
+    }, 100);
+  });
+});
