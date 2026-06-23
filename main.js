@@ -260,8 +260,17 @@ function gameOver() {
       }
     });
 
-    document.getElementById("final").innerText =
-    "Score: " + Math.floor(displayScore) + "\n総合ランキング " + rank + " 位！";
+    let rankClass = "";
+
+    if(rank === 1) rankClass = "gold";
+    else if(rank === 2) rankClass = "silver";
+    else if(rank === 3) rankClass = "bronze";
+    else if(rank === 4) rankClass = "fourth";
+    else if(rank === 5) rankClass = "fifth";
+
+    document.getElementById("final").innerHTML =
+      "Score: " + Math.floor(displayScore) +
+      "<br><span class='" + rankClass + "'>総合ランキング " + rank + " 位！</span>";
 
     db.ref("scores").push({
       name: playerName,
