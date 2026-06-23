@@ -420,14 +420,18 @@ const maxSize = Math.min(
   window.innerHeight - topUI
 );
 
-c.width = maxSize;
-c.height = maxSize;
+const dpr = window.devicePixelRatio || 1;
+
+c.width = maxSize * dpr;
+c.height = maxSize * dpr;
+
+c.style.width = maxSize + "px";
+c.style.height = maxSize + "px";
+
+ctx.scale(dpr, dpr);
 
 // ✅ 重要：cellをletにしておく！
-cell = Math.floor(c.width / size);
-c.width = cell * size;
-c.height = cell * size;
-
+cell = Math.floor(maxSize / size);
 let zoom = 1;
 
 function draw() {
@@ -436,7 +440,7 @@ function draw() {
   // フラッシュ
   if (flash > 0) {
     ctx.fillStyle = "rgba(255,255,255," + flash + ")";
-    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillRect(0, 0, maxSize, maxSize);
     flash -= 0.08;
   }
 
@@ -458,7 +462,7 @@ function draw() {
   fallAnim.forEach(f => {
     let yPos = f.from + (f.to - f.from) * f.progress;
 
-    let offset = (c.width - cell * size) / 2;
+    let offset = 0;
 
     let px = f.x * cell + offset;
     let py = yPos * cell + offset;
@@ -480,7 +484,7 @@ function draw() {
       let baseSize = cell - 4;
       let size2 = baseSize;
 
-      let offset = (c.width - cell * size) / 2;
+      let offset = 0;
 
       let px = x * cell + offset;
       let py = y * cell + offset;
@@ -535,7 +539,7 @@ function draw() {
   // ===== ✅ ★ここが超重要（爆発エフェクト） =====
   boomAnim.forEach(b => {
 
-    let offset = (c.width - cell * size) / 2;
+    let offset = 0;
 
     let cx = b.x * cell + offset + cell / 2;
     let cy = b.y * cell + offset + cell / 2;
@@ -556,7 +560,7 @@ function draw() {
   // ✅ 破片描画
   particles.forEach(p => {
 
-    let offset = (c.width - cell * size) / 2;
+    let offset = 0;
 
     let px = p.x * cell + offset + cell/2;
     let py = p.y * cell + offset + cell/2;
@@ -574,7 +578,9 @@ function draw() {
     ctx.fillStyle = "#fff";
     ctx.font = "bold 40px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("終了！", c.width / 2, c.height / 2);
+    ctx.textBaseline = "middle";
+
+    ctx.fillText("終了！", maxSize / 2, maxSize / 2);
   }
 
   ctx.restore();
@@ -815,6 +821,8 @@ function remove(m, bombPos){
   combo++;
   displayCombo = combo;
   comboTimer = 60;
+
+  zoom = 1 + combo * 0.05;
   
   comboX = m[0].x;
   comboY = m[0].y;
@@ -1000,8 +1008,8 @@ function explode(x, y) {
           x: nx,
           y: ny,
           radius: 0,
-          max: cell * 2,
-          alpha: 0.6
+          max: cell * 3,
+          alpha: 0.8
         });
         flash = 1.5;   // ✅ 強く光る
         shake = 25;    // ✅ 強く揺れる
@@ -1171,10 +1179,12 @@ c.addEventListener("mousedown", e => {
     swipeStart = null;
     return;
   }
-  let offset = (c.width - cell * size) / 2;
+  let offset = 0;
 
-  let x = Math.floor((e.offsetX - offset) / cell);
-  let y = Math.floor((e.offsetY - offset) / cell);
+  let rect = c.getBoundingClientRect();
+
+  let x = Math.floor((e.clientX - rect.left) / cell);
+  let y = Math.floor((e.clientY - rect.top) / cell);
 
   // 範囲外防止（おすすめ）
   if (x < 0 || y < 0 || x >= size || y >= size) return;
@@ -1185,10 +1195,14 @@ c.addEventListener("mousedown", e => {
 c.addEventListener("mouseup", e => {
   if(isBusy || !swipeStart) return;
 
-  let offset = (c.width - cell * size) / 2;
+  let offset = 0;
 
-  let x = Math.floor((e.offsetX - offset) / cell);
-  let y = Math.floor((e.offsetY - offset) / cell);
+  let rect = c.getBoundingClientRect();
+
+  
+  let x = Math.floor((e.clientX - rect.left) / cell);
+  let y = Math.floor((e.clientY - rect.top) / cell);
+
 
   let dx = x - swipeStart.x;
   let dy = y - swipeStart.y;
@@ -1280,13 +1294,16 @@ c.addEventListener("touchstart", e => {
     return;
   }
 
+  let rect = c.getBoundingClientRect();
   let r = c.getBoundingClientRect();
   let t = e.touches[0];
 
-  let offset = (c.width - cell * size) / 2;
+  let offset = 0;
 
-  let x = Math.floor((t.clientX - r.left - offset) / cell);
-  let y = Math.floor((t.clientY - r.top - offset) / cell);
+    
+  let x = Math.floor((t.clientX - rect.left) / cell);
+  let y = Math.floor((t.clientY - rect.top) / cell);
+
 
   if (x < 0 || y < 0 || x >= size || y >= size) return;
 
@@ -1301,7 +1318,7 @@ c.addEventListener("touchend", e => {
   let r = c.getBoundingClientRect();
   let t = e.changedTouches[0];
 
-  let offset = (c.width - cell * size) / 2;
+  let offset = 0;
 
   let x = Math.floor((t.clientX - r.left - offset) / cell);
   let y = Math.floor((t.clientY - r.top - offset) / cell);
@@ -1462,8 +1479,8 @@ function loop(){
 
   // ✅ 爆発アニメ更新
   boomAnim.forEach(b => {
-    b.radius += 14;
-    b.alpha -= 0.06;
+    b.radius += 20;
+    b.alpha -= 0.05;
   });
   // ✅ 破片更新
   particles.forEach(p => {
