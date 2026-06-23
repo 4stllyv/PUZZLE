@@ -636,7 +636,7 @@ function updateAnim() {
     }
   }
 
-  fallAnim.forEach(f => f.progress += 0.06);
+  fallAnim.forEach(f => f.progress += 0.065);
   fallAnim = fallAnim.filter(f => f.progress < 1);
 }
 
@@ -841,6 +841,11 @@ if(combo > 1){
   // ✅ 強さで色変える
   if(combo >= 8){
     el.style.color = "red";
+    
+    if (navigator.vibrate) {
+        navigator.vibrate([60,30,60,30,120]);
+      }
+
   }else if(combo >= 5){
     el.style.color = "yellow";
   }else{
@@ -1031,6 +1036,7 @@ function explode(x, y) {
       flash = 2;
       shake = 35;
       zoom = 1.3;
+      navigator.vibrate([100, 40, 100]);
     }
 
   }
