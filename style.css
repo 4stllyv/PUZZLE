@@ -287,22 +287,29 @@ button:active{
 }
 
 .rank-item {
-  background: rgba(255,255,255,0.1);
-  border-radius: 12px;
-  padding: 10px 15px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  backdrop-filter: blur(8px);
-  transition: transform 0.2s;
+
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.1);
 }
+
 
 .rank-item:hover {
   transform: scale(1.05);
 }
 
+.rank-score {
+  text-align: right;
+  min-width: 90px;
+}
+
 .rank-name {
   font-weight: bold;
+  flex: 1;
 }
 
 .rank-score {
@@ -324,13 +331,6 @@ button:active{
   opacity: 1;
   transform: scale(1.1);
   background: linear-gradient(45deg, #ffcc00, #ff8800);
-}
-
-.rank-item {
-  padding: 10px;
-  margin: 5px 0;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.1);
 }
 
 /* 🥇 1位 */
