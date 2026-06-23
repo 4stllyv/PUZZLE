@@ -279,6 +279,94 @@ button:active{
   text-align:center;
 }
 
+.rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+}
+
+.rank-item {
+  background: rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 10px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s;
+}
+
+.rank-item:hover {
+  transform: scale(1.05);
+}
+
+.rank-name {
+  font-weight: bold;
+}
+
+.rank-score {
+  color: rgb(0, 0, 0);
+}
+
+.rank-btn {
+  opacity: 0.5;
+  transition: all 0.2s;
+}
+
+.rank-btn.active {
+  opacity: 1;
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+.rank-btn.active {
+  opacity: 1;
+  transform: scale(1.1);
+  background: linear-gradient(45deg, #ffcc00, #ff8800);
+}
+
+button {
+  background: linear-gradient(45deg, #4facfe, #00f2fe);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.active-btn {
+  background: orange;
+  color: white;
+  box-shadow: 0 0 10px rgba(255,165,0,0.7);
+}
+
+button:hover {
+  transform: scale(1.08);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+button:active {
+  transform: scale(0.95);
+}
+
+.rank-item {
+  animation: fadeUp 0.3s ease;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .note{
   position:fixed;
   bottom:10px;
@@ -586,3 +674,8 @@ animation: bgMove 6s ease infinite;
   .value{
     font-size:22px;
   }
+
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
