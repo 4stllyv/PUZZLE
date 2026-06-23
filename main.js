@@ -71,6 +71,9 @@ function startGame() {
   ending = false;
   showEnd = false;
   gameId++;
+  setInputEnabled(true);
+  swipeStart = null;
+  isBusy = false;
 
 
   const name = document.getElementById("name").value.trim();
@@ -116,6 +119,9 @@ function retryGame() {
 
   ending = false;
   showEnd = false;
+  setInputEnabled(true);
+  swipeStart = null;
+  isBusy = false;
 
   // ✅ 状態リセット
   score = 0;
@@ -223,39 +229,31 @@ let showEnd = false;
 
 function gameOver() {
 
+  if (isGameOver) return;
+
   isGameOver = true;
-  showEnd = true; // ✅ 追加（終了演出ON）
+  isBusy = false;
+  setInputEnabled(true);
+  swipeStart = null;
 
-  // ✅ スコア表示はここでやっとく
-  document.getElementById("final").innerText =
-    "Score: " + Math.floor(displayScore);
+  showEnd = true;
 
-  // ✅ ランキング処理もここでOK
-  let r = JSON.parse(localStorage.getItem("rank") || "[]");
-  r.push(score);
-  r.sort((a, b) => b - a);
-  r = r.slice(0, 5);
-  localStorage.setItem("rank", JSON.stringify(r));
-
-  db.ref("scores").push({
-    name: playerName,
-    score: score,
-    time: Date.now()
-  });
-
-  // ✅ ここが一番重要！！
+  // ✅ 少し待ってから結果へ
   setTimeout(() => {
+
+    document.getElementById("final").innerText =
+      "Score: " + Math.floor(displayScore);
+
+    db.ref("scores").push({
+      name: playerName,
+      score: score,
+      time: Date.now()
+    });
+
     show("result");
-    showEnd = false; // ✅ 念のため戻す
-  }, 1000); // ← 表示時間（1秒）
+    showEnd = false;
 
-  let best = localStorage.getItem("best") || 0;
-
-  if(score > best){
-    localStorage.setItem("best", score);
-    document.getElementById("final").innerText += "\n✨ NEW RECORD!";
-  }
-
+  }, 1500); // ←ここ調整🔥
 }
 
 // ===== 素材 =====
@@ -636,7 +634,7 @@ function updateAnim() {
     }
   }
 
-  fallAnim.forEach(f => f.progress += 0.07);
+  fallAnim.forEach(f => f.progress += 0.045);
   fallAnim = fallAnim.filter(f => f.progress < 1);
 }
 
@@ -1088,18 +1086,6 @@ function update() {
   let data = find();
   let m = data.matches;
 
-  // ✅ 最強終了チェック
-  if (
-    moves <= 0 &&
-    m.length === 0 &&
-    addScore <= 0 &&
-    highlightTimer <= 0
-  ) {
-    isBusy = false;   // ← 強制解除ポイント🔥
-    gameOver();
-    return;
-  }
-
   if (moves <= 0) {
     ending = true;
   }
@@ -1510,11 +1496,35 @@ particles = particles.filter(p => p.life > 0);
     setInputEnabled(true);
   }
 
+  
+  draw();
+  updateAnim();
+
+  
+  if (
+    moves <= 0 &&
+    !isGameOver &&
+    addScore <= 0 &&
+    highlightTimer <= 0 &&
+    fallAnim.length === 0 &&
+    find().matches.length === 0 &&
+    !isBombChain
+  ) {
+    gameOver();
+  }
+
+
   if(highlightTimer > 0){
     highlightTimer--;
   }else{
     highlight = [];
   }
+
+    
+  if (!isBusy) {
+    setInputEnabled(true);
+  }
+
 
   if(comboTimer > 0){
   comboTimer--;
