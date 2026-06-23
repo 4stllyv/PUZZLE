@@ -888,7 +888,7 @@ if(combo > 1){
   // ✅ 実際に消えた数で計算
   let count = m.length;
 
-  let gain = count * 25 + combo * 25;
+  let gain = count * 20 + combo * 20;
 
   if (count === 4) gain += 40;
   else if (count === 5) gain += 80;
