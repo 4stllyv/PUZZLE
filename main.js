@@ -1447,6 +1447,7 @@ c.addEventListener("touchend", e => {
 
 // ===== ループ =====
 let idleTimer = 0;
+let endWait = 0;
 
 function loop(){
 
@@ -1510,7 +1511,16 @@ particles = particles.filter(p => p.life > 0);
     find().matches.length === 0 &&
     !isBombChain
   ) {
-    gameOver();
+
+    endWait++;
+
+    // ✅ 約0.5秒待つ（60fps想定）
+    if (endWait > 30) {
+      gameOver();
+    }
+
+  } else {
+    endWait = 0; // 条件崩れたらリセット
   }
 
 
