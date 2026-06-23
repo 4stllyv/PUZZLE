@@ -29,12 +29,18 @@
 <div id="title" class="screen active">
   <h1>動物パズル</h1>
   <div>
-  <button onclick="setRankMode('all')">総合</button>
-  <button onclick="setRankMode('week')">週間</button>
-  </div>
-  <div id="globalRank"></div>
+  <button id="allBtn" class="active-btn" onclick="setRankMode('all')">
+    総合
+  </button>
 
-  <input id="name" placeholder="名前を入力" maxlength="10">
+  <button id="weekBtn" onclick="setRankMode('week')">
+    週間
+  </button>
+
+  </div>
+  <div id="globalRank" class="rank-list"></div>
+
+  <input id="name" maxlength="8" placeholder="名前を入力(8文字まで)">
   <button onclick="startGame()">START</button>
   <div class="note">
   ※ Safari / Chrome 推奨（LINE・Instagram内では正しく動作しない場合があります）
@@ -127,10 +133,8 @@
       <b>◆ 特殊ルール</b><br>
       🐱🐱🐱🐱 → 1列すべて消える！<br>
       🐱🐱🐱🐱🐱 → 🦍爆弾出現！<br>
-      🦍 → タップで周りをドカン！💥<br><br>
-
-      <b>◆ コンボ技</b><br>
-      ＋やL字にそろえると…<br>
+      🦍 → タップで周りをドカン！💥<br>
+      🦍×🦍で大爆発！！<br>
       💥 列消し＋爆弾など同時発動！<br><br>
 
       <b>◆ コツ</b><br>
