@@ -326,6 +326,47 @@ button:active{
   background: linear-gradient(45deg, #ffcc00, #ff8800);
 }
 
+.rank-item {
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.1);
+}
+
+/* 🥇 1位 */
+.gold {
+  background: linear-gradient(45deg, gold, orange);
+  color: #ffffff;
+  font-weight: bold;
+  box-shadow: 0 0 10px gold;
+}
+
+/* 🥈 2位 */
+.silver {
+  background: linear-gradient(45deg, #ddd, #999);
+  color: #ffffff;
+  font-weight: bold;
+}
+
+/* 🥉 3位 */
+.bronze {
+  background: linear-gradient(45deg, #cd7f32, #8b4513);
+  color:#ffffff;
+  font-weight: bold;
+}
+
+.fourth {
+  background: rgba(255,255,255,0.2);
+  color:#ffffff;
+  font-weight: bold;
+}
+
+.fifth {
+  background: rgba(255,255,255,0.15);
+  color:#ffffff;
+  font-weight: bold;
+}
+
 button {
   background: linear-gradient(45deg, #4facfe, #00f2fe);
   border: none;
