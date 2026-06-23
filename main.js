@@ -246,8 +246,22 @@ function gameOver() {
   // ✅ 少し待ってから結果へ
   setTimeout(() => {
 
+    let arr = Object.values(rankData || []);
+
+    // スコア降順
+    arr.sort((a, b) => b.score - a.score);
+
+    // 自分より上の人数を数える
+    let rank = 1;
+
+    arr.forEach(v => {
+      if (v.score > score) {
+        rank++;
+      }
+    });
+
     document.getElementById("final").innerText =
-      "Score: " + Math.floor(displayScore);
+    "Score: " + Math.floor(displayScore) + "\n総合ランキング " + rank + " 位！";
 
     db.ref("scores").push({
       name: playerName,
@@ -324,6 +338,15 @@ function renderRanking(data){
   arr.slice(0,5).forEach((v,i)=>{
 
     let div = document.createElement("div");
+    
+    if(i === 0) div.className = "rank-item gold";
+    else if(i === 1) div.className = "rank-item silver";
+    else if(i === 2) div.className = "rank-item bronze";
+    else if(i === 3) div.className = "rank-item fourth";
+    else if(i === 4) div.className = "rank-item fifth";
+
+    else div.className = "rank-item";
+
     div.className = "rank-item";
 
     let icon = ["🥇","🥈","🥉"][i] || (i+1);
@@ -865,7 +888,13 @@ if(combo > 1){
   // ✅ 実際に消えた数で計算
   let count = m.length;
 
-  let gain = count * 10 * (1 + combo);
+  let gain = count * 25 + combo * 25;
+
+  if (count === 4) gain += 40;
+  else if (count === 5) gain += 80;
+  else if (count === 6) gain += 140;
+  else if (count >= 7) gain += 200;
+
 
   score += gain;       // 最終スコア
   addScore += gain;    // 表示用に積む
