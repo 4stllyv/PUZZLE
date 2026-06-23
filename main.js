@@ -361,11 +361,9 @@ function renderRanking(data){
     let icon = ["🥇","🥈","🥉"][i] || (i+1);
 
     div.innerHTML = `
-      <div class="rank-name">${icon} ${v.name}</div>
-      <div class="rank-score">${v.score}</div>
+      <div class="rank-name">${icon} ${v.name}　${v.score}</div>
     `;
-
-    box.appendChild(div);
+        box.appendChild(div);
   });
 }
 
