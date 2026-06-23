@@ -435,7 +435,7 @@ cell = Math.floor(maxSize / size);
 let zoom = 1;
 
 function draw() {
-  ctx.clearRect(0, 0, c.width, c.height);
+  ctx.clearRect(0, 0, maxSize, maxSize);
 
   // フラッシュ
   if (flash > 0) {
@@ -448,8 +448,9 @@ function draw() {
 
   ctx.scale(zoom, zoom);
         ctx.translate(
-        c.width * (1 - zoom) / 2,
-        c.height * (1 - zoom) / 2
+        maxSize * (1 - zoom) / 2,
+        maxSize * (1 - zoom) / 2
+
       );
 
   // シェイク
@@ -573,7 +574,7 @@ function draw() {
   // 終了表示
   if (showEnd) {
     ctx.fillStyle = "rgba(0,0,0,0.6)";
-    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillRect(0, 0, maxSize, maxSize);
 
     ctx.fillStyle = "#fff";
     ctx.font = "bold 40px sans-serif";
@@ -635,7 +636,7 @@ function updateAnim() {
     }
   }
 
-  fallAnim.forEach(f => f.progress += 0.045);
+  fallAnim.forEach(f => f.progress += 0.06);
   fallAnim = fallAnim.filter(f => f.progress < 1);
 }
 
@@ -1295,7 +1296,6 @@ c.addEventListener("touchstart", e => {
   }
 
   let rect = c.getBoundingClientRect();
-  let r = c.getBoundingClientRect();
   let t = e.touches[0];
 
   let offset = 0;
@@ -1508,10 +1508,6 @@ particles = particles.filter(p => p.life > 0);
     isBusy = false;
     setInputEnabled(true);
   }
-
-  
-  draw();
-  updateAnim();
 
   
   if (
