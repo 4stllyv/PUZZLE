@@ -1030,7 +1030,7 @@ if(combo > 1){
   if(feverTurns > 0){
     let el = document.getElementById("comboText");
 
-    el.innerText = "🔥 FEVER x1.5";
+    el.innerText = "🔥 FEVER x1.3";
     el.style.color = "orange";
     el.style.opacity = 1;
 
