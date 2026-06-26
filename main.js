@@ -102,6 +102,14 @@ function startGame() {
   moves = 30;
   combo = 0;
   isGameOver = false;
+  // ✅ FEVERリセット（超重要🔥）
+  feverTurns = 0;
+  feverFlash = 0;
+  feverHue = 0;
+  feverStartedThisTurn = false;
+  feverConsumedThisTurn = false;
+  turnUsed = false;
+
 
   // ✅ UIリセット
   document.getElementById("scoreNum").innerText = "0";
@@ -137,6 +145,14 @@ function retryGame() {
   moves = 30;
   combo = 0;
   isGameOver = false;
+  // ✅ FEVERリセット（超重要🔥）
+  feverTurns = 0;
+  feverFlash = 0;
+  feverHue = 0;
+  feverStartedThisTurn = false;
+  feverConsumedThisTurn = false;
+  turnUsed = false;
+
   gameId++;
 
 
