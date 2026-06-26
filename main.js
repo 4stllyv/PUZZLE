@@ -1743,7 +1743,7 @@ function loop(){
   const feverTurnsInfo = document.getElementById("feverTurnsInfo");
 
   if(feverTurns > 0){
-    feverInfo.innerText = "🔥 FEVER ×1.5";
+    feverInfo.innerText = "🔥 FEVER ×1.3";
     feverTurnsInfo.innerText = "FEVER残り " + feverTurns;
   }else{
     feverInfo.innerText = "";
