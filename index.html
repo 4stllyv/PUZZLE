@@ -5,14 +5,14 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>動物パズル</title>
+<title>動物パズルv2</title>
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 <div id="splash">
-  <div class="logo">動物パズル</div>
+  <div class="logo">動物パズルv2</div>
   <div class="loader"></div>
   <div class="animals">
   <img src="assets/red.png">
@@ -27,7 +27,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
 <div id="title" class="screen active">
-  <h1>動物パズル ~大型アプデ入ります(日付未定)~</h1>
+  <h1>動物パズルv2</h1>
   <div>
   <button id="allBtn" class="active-btn" onclick="setRankMode('all')">
     総合
@@ -37,30 +37,33 @@
     週間
   </button>
 
+  <button id="seasonBtn" onclick="setRankMode('season')">
+    シーズン1結果
+  </button>
+
   </div>
   <div id="globalRank" class="rank-list"></div>
 
   <input id="name" maxlength="8" placeholder="名前を入力(8文字まで)">
   <button onclick="startGame()">START</button>
-  <div class="note">
-  ※ Safari / Chrome 推奨（LINE・Instagram内では正しく動作しない場合があります）
-  </div>
 </div>
 
 <div id="gameScreen" class="screen">
   <button id="help" onclick="show('rules')">❓遊び方</button>
-  <h1>動物パズル</h1>
+  <h1>動物パズルv2</h1>
   <div id="comboText"></div>
 
   <div class="ui">
     <div class="card">
       <div class="label">スコア</div>
       <div id="scoreNum" class="value">0</div>
+      <div id="feverInfo" class="sub"></div>
     </div>
 
     <div class="card">
       <div class="label">残り回数</div>
       <div id="movesNum" class="value">30</div>
+      <div id="feverTurnsInfo" class="sub"></div>
     </div>
   </div>
 
@@ -124,25 +127,29 @@
     <h2>遊び方</h2>
 
     <p class="desc">
-      同じ動物をそろえて消そう！<br><br>
+    同じ動物をそろえて消そう！<br><br>
 
-      <b>◆ 基本ルール</b><br>
-      🐱🐱🐱 → 消える<br>
-      🔁 連続で消すとコンボ！<br><br>
+    <b>◆ 基本ルール</b><br>
+    🐤🐤🐤 → 消える！<br>
+    🔁 連続で消すとコンボ！<br><br>
 
-      <b>◆ 特殊ルール</b><br>
-      🐱🐱🐱🐱 → 1列すべて消える！<br>
-      🐱🐱🐱🐱🐱 → 🦍爆弾出現！<br>
-      🦍 → タップで周りをドカン！💥<br>
-      🦍×🦍で大爆発！！<br>
-      💥 列消し＋爆弾など同時発動！<br><br>
+    <b>◆ 特殊ルール</b><br>
+    🐤🐤🐤🐤 → 1列すべて消える！<br>
+    🐤🐤🐤🐤🐤 → 🦍爆弾出現！<br>
+    🦍 → タップで周りをドカン！💥<br>
+    🦍×🦍で超大爆発！！🔥<br><br>
 
-      <b>◆ コツ</b><br>
-      🧠 たくさんつながる形を狙おう！<br>
-      ⚡ コンボをつなげて高得点！<br><br>
+    <b>◆ 新要素（シーズン2）</b><br>
+    🔥 コンボ5以上でFEVER突入！<br>
+    ⚡ FEVER中はスコア1.3倍！<br>
+    🌈 🐤🐤🐤🐤4つでも爆弾生成！<br><br>
 
-      🎯 手数が0になるとゲーム終了！
-    </p>
+    <b>◆ コツ</b><br>
+    🧠 1手でたくさんつながる形を狙おう！<br>
+    ⚡ コンボをつなげてFEVERを狙え！<br><br>
+
+    🎯 手数が0になるとゲーム終了！
+  </p>
 
     <button class="menuBtn cancel" onclick="show('gameScreen')">
       戻る
