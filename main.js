@@ -52,6 +52,8 @@ document.body.addEventListener("touchmove", e => {
   e.preventDefault();
 }, { passive: false });
 
+const SEASON2_START = new Date("2026-06-26T14:00:00").getTime();
+
 
 db.ref("scores").on("value", snapshot => {
 
@@ -186,12 +188,6 @@ function openMenu() {
   show("menu");
 }
 
-// 押した選択を保存
-function confirmAction(type) {
-  tempAction = type;
-  show("confirm");
-}
-
 // 「いいえ」
 function backMenu() {
   show("menu");
@@ -215,18 +211,21 @@ function doAction() {
   console.log("⚠ 未定義:", tempAction);
 }
 
-function show(id) {
-  document.querySelectorAll(".screen").forEach(s => {
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>{
     s.classList.remove("active");
   });
+
   document.getElementById(id).classList.add("active");
 
-
   const note = document.querySelector(".note");
-  if (id === "title") {
-    note.style.display = "block";
-  } else {
-    note.style.display = "none";
+
+  if(note){
+    if(id === "title"){
+      note.style.display = "block";
+    }else{
+      note.style.display = "none";
+    }
   }
 }
 
@@ -247,6 +246,10 @@ function gameOver() {
   setTimeout(() => {
 
     let arr = Object.values(rankData || []);
+    
+    
+    // ✅ シーズン2だけにする
+    arr = arr.filter(v => v.time >= SEASON2_START);
 
     // スコア降順
     arr.sort((a, b) => b.score - a.score);
@@ -275,8 +278,10 @@ function gameOver() {
     db.ref("scores").push({
       name: playerName,
       score: score,
-      time: Date.now()
+      time: Date.now(),
+      season: Date.now() < SEASON2_START ? "s1" : "s2"
     });
+
 
     show("result");
     showEnd = false;
@@ -298,8 +303,6 @@ imgs.yellow.src = "assets/yellow.png";
 imgs.purple.src = "assets/purple.png";
 imgs.bomb.src = "assets/bomb.png";
 
-const sound = new Audio("assets/pop.mp3");
-
 // ===== 状態 =====
 const size = 8
 let cell = 50;
@@ -318,18 +321,24 @@ function setRankMode(mode){
 
   rankMode = mode;
 
-  // ✅ ボタンの見た目切り替え
   document.getElementById("allBtn").classList.remove("active-btn");
   document.getElementById("weekBtn").classList.remove("active-btn");
+  document.getElementById("seasonBtn").classList.remove("active-btn");
 
   if(mode === "all"){
     document.getElementById("allBtn").classList.add("active-btn");
-  }else{
+  }
+  else if(mode === "week"){
     document.getElementById("weekBtn").classList.add("active-btn");
+  }
+  else if(mode === "season"){
+    document.getElementById("seasonBtn").classList.add("active-btn");
   }
 
   renderRanking(rankData);
 }
+
+const SEASON1_END = new Date("2026-07-01").getTime();
 
 function renderRanking(data){
 
@@ -342,31 +351,118 @@ function renderRanking(data){
   }
 
   let arr = Object.values(data);
+
+  // ✅ モードごとにフィルター
+  if(rankMode === "week"){
+    let now = Date.now();
+    let week = 7 * 24 * 60 * 60 * 1000;
+
+    arr = arr.filter(v => now - v.time <= week);
+  }
+
+  
+  // ✅ 総合（シーズン2だけ）
+  if(rankMode === "all"){
+    arr = arr.filter(v => v.time >= SEASON2_START);
+  }
+
+
+  if(rankMode === "season"){
+    arr = arr.filter(v => v.time < SEASON2_START);
+  }
+
+  // ✅ ソート
   arr.sort((a, b) => b.score - a.score);
+
+  // ✅ ★ シーズンだけ特別表示
+  if(rankMode === "season"){
+
+    if(arr.length === 0){
+      box.innerHTML = "まだスコアなし";
+      return;
+    }
+
+    // 🥇 1位
+    let top = arr[0];
+
+    let topDiv = document.createElement("div");
+    topDiv.className = "rank-top";
+
+    topDiv.innerHTML = `
+      <div class="top-left">
+        <img src="${top.icon || 'assets/crown.png'}">
+      </div>
+      <div class="top-right">
+        <div class="top-name">🥇 ${top.name}</div>
+        <div class="top-score">${top.score}</div>
+      </div>
+    `;
+
+    box.appendChild(topDiv);
+
+    // ⭐ 2〜5位
+    // ✅ 上段（2位・3位）
+    let row1 = document.createElement("div");
+    row1.className = "season-row";
+
+    // ✅ 下段（4位・5位）
+    let row2 = document.createElement("div");
+    row2.className = "season-row";
+
+    arr.slice(1,5).forEach((v,i)=>{
+
+      let div = document.createElement("div");
+
+      // ✅ 順位でクラス変える
+      if(i === 0){
+        div.className = "season-mini silver";
+      }
+      else if(i === 1){
+        div.className = "season-mini bronze";
+      }
+      else{
+        div.className = "season-mini";
+      }
+
+      div.innerHTML = `
+        <span>${i+2}位</span> ${v.name}<br>
+        <small>${v.score}</small>
+      `;
+
+
+      if(i < 2){
+        row1.appendChild(div); // 2位・3位
+      }else{
+        row2.appendChild(div); // 4位・5位
+      }
+    });
+
+    box.appendChild(row1);
+    box.appendChild(row2);
+
+    return;
+  }
 
   arr.slice(0,5).forEach((v,i)=>{
 
     let div = document.createElement("div");
-    
+
     if(i === 0) div.className = "rank-item gold";
     else if(i === 1) div.className = "rank-item silver";
     else if(i === 2) div.className = "rank-item bronze";
     else if(i === 3) div.className = "rank-item fourth";
     else if(i === 4) div.className = "rank-item fifth";
-
     else div.className = "rank-item";
-
-    div.className = "rank-item";
 
     let icon = ["🥇","🥈","🥉"][i] || (i+1);
 
     div.innerHTML = `
       <div class="rank-name">${icon} ${v.name}　${v.score}</div>
     `;
-        box.appendChild(div);
+
+    box.appendChild(div);
   });
 }
-
 
 // ===== 初期化 =====
 function rand() {
@@ -466,11 +562,27 @@ let zoom = 1;
 
 function draw() {
   ctx.clearRect(0, 0, maxSize, maxSize);
+  // ===== 🔥 FEVER背景グロー =====
+  if(feverTurns > 0){
 
-  // フラッシュ
-  if (flash > 0) {
-    ctx.fillStyle = "rgba(255,255,255," + flash + ")";
+    let grad = ctx.createLinearGradient(0,0,maxSize,maxSize);
+
+    grad.addColorStop(0, `hsla(${feverHue},100%,60%,0.25)`);
+    grad.addColorStop(1, `hsla(${feverHue+60},100%,60%,0.25)`);
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,maxSize,maxSize);
+
+  }
+
+  // フラッシュ（FEVER対応）
+  if (flash > 0 || feverFlash > 0) {
+
+    let f = Math.max(flash, feverFlash);
+
+    ctx.fillStyle = "rgba(255,255,255," + f + ")";
     ctx.fillRect(0, 0, maxSize, maxSize);
+
     flash -= 0.08;
   }
 
@@ -564,7 +676,13 @@ function draw() {
       }
 
       ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+
     }
+  }
+
+    if(feverTurns > 0){
+    ctx.globalCompositeOperation = "lighter";
   }
 
   // ===== ✅ ★ここが超重要（爆発エフェクト） =====
@@ -705,18 +823,27 @@ function find(){
           }
 
           // ✅ 4個 → 横一列
-          if(count === 4){
+          if(count === 4 && fever === 0){
             didLine = true; 
             for(let i=0;i<size;i++){
               extra.push({x:i,y:y});
             }
           }
 
+
           // ✅ 5以上 → 爆弾
-          if(count >= 5 && !bombTriggered && !didLine && !isBombChain){
+          // FEVER中
+          if(feverTurns > 0 && count >= 4 && !bombTriggered && !isBombChain){
             let center = group[Math.floor(group.length/2)];
             bombPos.push(center);
           }
+
+          // 通常
+          else if(count >= 5 && !bombTriggered && !didLine && !isBombChain){
+            let center = group[Math.floor(group.length/2)];
+            bombPos.push(center);
+          }
+
 
         }
 
@@ -750,19 +877,28 @@ function find(){
             group.push({x:px,y:py});
           }
 
-          // ✅ 4個 → 縦一列
-          if(count === 4){
+          // ✅ 4個 → 縦一列  
+          if(count === 4 && fever === 0){
             didLine = true; 
             for(let i=0;i<size;i++){
               extra.push({x:x,y:i});
             }
           }
 
+
           // ✅ 5以上 → 爆弾
-          if(count >= 5 && !bombTriggered && !didLine && !isBombChain){
+          // ✅ FEVER中
+          if(feverTurns > 0 && count >= 4 && !bombTriggered && !isBombChain){
             let center = group[Math.floor(group.length/2)];
             bombPos.push(center);
           }
+
+          // ✅ 通常
+          else if(count >= 5 && !bombTriggered && !didLine && !isBombChain){
+            let center = group[Math.floor(group.length/2)];
+            bombPos.push(center);
+          }
+
 
         }
 
@@ -843,17 +979,29 @@ let comboTimeout = null;
 let displayCombo = 0;
 let displayScore = 0;
 let addScore = 0;
-
-
-
+let fever = 0;
+let feverFlash = 0;
+let feverHue = 0;
+let feverUsed = false;
+let feverTurns = 0;
+let feverConsumed = false;
+let turnUsed = false;
+let feverConsumedThisTurn = false;
+let feverStartedThisTurn = false;
 
 function remove(m, bombPos){
 
   combo++;
+
+  if(combo >= 5 && feverTurns === 0){
+    feverTurns = 2;
+    feverStartedThisTurn = true;
+  }
+
   displayCombo = combo;
   comboTimer = 60;
 
-  zoom = 1 + combo * 0.05;
+  
   
   comboX = m[0].x;
   comboY = m[0].y;
@@ -861,6 +1009,19 @@ function remove(m, bombPos){
   let el = document.getElementById("comboText");
 
 if(combo > 1){
+
+  // ✅ フィーバー表示
+  if(feverTurns > 0){
+    let el = document.getElementById("comboText");
+
+    el.innerText = "🔥 FEVER x1.5";
+    el.style.color = "orange";
+    el.style.opacity = 1;
+
+    setTimeout(()=>{
+      el.style.opacity = 0;
+    }, 600);
+  }
 
   // ✅ ★前のタイマー消す
   if(comboTimeout){
@@ -895,12 +1056,19 @@ if(combo > 1){
   // ✅ 実際に消えた数で計算
   let count = m.length;
 
-  let gain = count * 20 + combo * 20;
+  let gain = count * 15 + combo * 20;
+
+  if(feverTurns > 0){
+    gain *= 1.3;
+  }
+
 
   if (count === 4) gain += 40;
   else if (count === 5) gain += 80;
-  else if (count === 6) gain += 140;
-  else if (count >= 7) gain += 200;
+  else if (count === 6) gain += 150;
+  else if (count === 7) gain += 250;
+  else if (count >= 8)gain += 300;
+  
 
 
   score += gain;       // 最終スコア
@@ -930,6 +1098,7 @@ m.forEach(p=>{
     });
   }
   bombTriggered = false;
+
 }
 
 
@@ -1010,10 +1179,9 @@ function explode(x, y) {
   let list = [{x, y}];
   let visited = {};
   let removed = {};
+  let bombCount = 1;
+
   zoom = 1.2;
-
-  let isMega = false;
-
   while(list.length){
 
     let p = list.pop();
@@ -1022,7 +1190,7 @@ function explode(x, y) {
     if(visited[key]) continue;
     visited[key] = true;
 
-    let range = isMega ? 2 : 1;
+    let range = 1;
 
     for(let dy = -range; dy <= range; dy++){
       for(let dx = -range; dx <= range; dx++){
@@ -1035,8 +1203,12 @@ function explode(x, y) {
         let k = nx + "_" + ny;
 
         if(board[ny][nx] === "bomb"){
-          list.push({x:nx, y:ny});
-          isMega = true;
+          let key2 = nx + "_" + ny;
+
+          if(!visited[key2]){
+            list.push({x:nx, y:ny});
+            bombCount++; // ✅ ここが正しくカウント
+          }
         }
 
         removed[k] = {x: nx, y: ny};
@@ -1062,14 +1234,72 @@ function explode(x, y) {
         }
       }
     }
-    
-    if(isMega){
-      flash = 2;
-      shake = 35;
-      zoom = 1.3;
-    }
 
   }
+  if(bombCount >= 2){
+
+  // 💡 一瞬止まる感じ
+  shake = 80;
+  flash = 4;
+  zoom = 1.8;
+
+  // ✅ ① 時間差で連続爆発させる（これが神）
+  for(let i=0;i<60;i++){
+
+    setTimeout(() => {
+
+      let rx = Math.random() * size;
+      let ry = Math.random() * size;
+
+      boomAnim.push({
+        x: rx,
+        y: ry,
+        radius: 0,
+        max: cell * 6,
+        alpha: 1
+      });
+
+    }, i * 20); // ←時間差ポイント🔥
+  }
+
+  // ✅ ② パーティクル嵐
+  for(let i=0;i<200;i++){
+    particles.push({
+      x: Math.random()*size,
+      y: Math.random()*size,
+      vx: (Math.random()-0.5)*8,
+      vy: (Math.random()-0.5)*8,
+      life: 0.3
+    });
+  }
+
+  // ✅ ③ 画面フラッシュ2段階
+  setTimeout(() => { flash = 2; }, 100);
+  setTimeout(() => { flash = 1; }, 200);
+
+  // ✅ ④ 連続サウンド（やってたら）
+  try{
+    sound.currentTime = 0;
+    sound.play();
+    setTimeout(()=>sound.play(), 120);
+    setTimeout(()=>sound.play(), 240);
+  }catch(e){}
+
+  // ✅ ⑤ 実際の全消し
+  for(let y=0;y<size;y++){
+    for(let x=0;x<size;x++){
+      removed[x+"_"+y] = {x,y};
+    }
+  }
+  
+  let total = size * size;
+
+  let gain = total * 20; // ← 数値調整OK🔥
+
+  score += gain;
+  addScore += gain;
+
+}
 
   return Object.values(removed);
 }
@@ -1193,6 +1423,17 @@ function update() {
   if(m.length === 0){
   combo = 0;
   displayCombo = 0;
+
+  if(turnUsed && !feverConsumedThisTurn && feverTurns > 0 && !feverStartedThisTurn){
+    feverTurns--;
+    feverConsumedThisTurn = true;
+  }
+
+  
+  if(!isBusy && fallAnim.length === 0){
+    turnUsed = false;
+  }
+
   }
 
   // ✅ そのあとシャッフル
@@ -1230,96 +1471,108 @@ c.addEventListener("mousedown", e => {
 });
 
 c.addEventListener("mouseup", e => {
-  if(isBusy || !swipeStart) return;
-
-  let offset = 0;
+  if (isBusy || !swipeStart || moves <= 0) return;
 
   let rect = c.getBoundingClientRect();
 
-  
   let x = Math.floor((e.clientX - rect.left) / cell);
   let y = Math.floor((e.clientY - rect.top) / cell);
-
 
   let dx = x - swipeStart.x;
   let dy = y - swipeStart.y;
 
   // ✅ 範囲外防止
-  if (x < 0 || y < 0 || x >= size || y >= size) return;
-
-  // ✅ ★最優先：爆弾なら即発動！！
-  if (board[y][x] === "bomb") {
-
-    isBombChain = true;
-
-    let cells = explode(x, y);
-
-    cells.forEach(b => {
-      board[b.y][b.x] = null;
-    });
-
-    let gain = cells.length * 10 * (1 + combo);
-
-    score += gain;
-    addScore += gain;
-    let id = gameId;
-
-    setTimeout(() => {
-
-      if(id !== gameId) return;
-
-      drop();
-
-      let wait = setInterval(() => {
-
-        if(fallAnim.length === 0){
-
-          clearInterval(wait);
-
-          fill();
-          drop();
-
-          isBombChain = false;
-
-          setTimeout(() => {
-            
-          if(id === gameId){
-              update();
-            }
-
-          }, 200);
-        }
-
-      }, 16);
-
-    }, 120);
-
-    highlightTimer = 0;
+  if (x < 0 || y < 0 || x >= size || y >= size) {
     swipeStart = null;
-    return; // ✅ 超重要：ここで終了
+    return;
   }
 
-  // 通常スワップ
+  // =======================
+  // ✅ ① スワップ（最優先）
+  // =======================
   if (Math.abs(dx) + Math.abs(dy) === 1) {
+
     let x1 = swipeStart.x;
     let y1 = swipeStart.y;
 
     swap(x1, y1, x, y);
 
-
     let result = find();
 
     if (result.matches.length > 0 && moves > 0) {
-      combo = 0;
-      moves--;
-      document.getElementById("movesNum").innerText = moves;
-      update();
+
+    turnUsed = true; // ✅ 「この手を使った」フラグ
+    feverConsumedThisTurn = false;
+    feverStartedThisTurn = false;
+
+    moves--;
+    document.getElementById("movesNum").innerText = moves;
+    update();
     } else {
       swap(x1, y1, x, y);
     }
 
+    swipeStart = null;
+    return;
   }
 
+  // =======================
+  // ✅ ② タップ（完全一致のみ）
+  // =======================
+  if (x === swipeStart.x && y === swipeStart.y) {
+
+    if (board[y][x] === "bomb") {
+
+      isBombChain = true;
+
+      let cells = explode(x, y);
+
+      cells.forEach(b => {
+        board[b.y][b.x] = null;
+      });
+
+      let gain = cells.length * 10 * (1 + combo);
+
+      score += gain;
+      addScore += gain;
+
+      let id = gameId;
+
+      setTimeout(() => {
+
+        if(id !== gameId) return;
+
+        drop();
+
+        let wait = setInterval(() => {
+
+          if(fallAnim.length === 0){
+
+            clearInterval(wait);
+
+            fill();
+            drop();
+
+            isBombChain = false;
+
+            setTimeout(() => {
+              if(id === gameId){
+                update();
+              }
+            }, 200);
+          }
+
+        }, 16);
+
+      }, 120);
+
+      highlightTimer = 0;
+      swipeStart = null;
+      return;
+    }
+  }
+
+  // ✅ 何もなかったら終了
   swipeStart = null;
 });
 
@@ -1346,7 +1599,6 @@ c.addEventListener("touchstart", e => {
   swipeStart = { x, y };
 });
 
-
 c.addEventListener("touchend", e => {
   e.preventDefault();
   if (!swipeStart || isBusy || moves <= 0) return;
@@ -1354,18 +1606,56 @@ c.addEventListener("touchend", e => {
   let r = c.getBoundingClientRect();
   let t = e.changedTouches[0];
 
-  let offset = 0;
-
-  let x = Math.floor((t.clientX - r.left - offset) / cell);
-  let y = Math.floor((t.clientY - r.top - offset) / cell);
+  let x = Math.floor((t.clientX - r.left) / cell);
+  let y = Math.floor((t.clientY - r.top) / cell);
 
   let dx = x - swipeStart.x;
   let dy = y - swipeStart.y;
 
-  // ✅ 追加：その場タップ（爆弾発動）
-  if (Math.abs(dx) + Math.abs(dy) <= 1) {
+  // ✅ 範囲外防止
+  if (x < 0 || y < 0 || x >= size || y >= size) {
+    swipeStart = null;
+    return;
+  }
+
+  // =======================
+  // ✅ ① スワップ（最優先）
+  // =======================
+  if (Math.abs(dx) + Math.abs(dy) === 1) {
+
+    let x1 = swipeStart.x;
+    let y1 = swipeStart.y;
+
+    swap(x1, y1, x, y);
+
+    let result = find();
+
+    if (result.matches.length > 0 && moves > 0) {
+
+    turnUsed = true; // ✅ 「この手を使った」フラグ
+    feverConsumedThisTurn = false;
+    feverStartedThisTurn = false;
+
+    moves--;
+    document.getElementById("movesNum").innerText = moves;
+    update();
+    } else {
+      swap(x1, y1, x, y);
+    }
+
+    swipeStart = null;
+    return;
+  }
+
+  // =======================
+  // ✅ ② タップ（完全に同じマスだけ）
+  // =======================
+  if (x === swipeStart.x && y === swipeStart.y) {
+
     if (board[y][x] === "bomb") {
+
       isBombChain = true;
+
       let cells = explode(x, y);
 
       cells.forEach(b => {
@@ -1373,118 +1663,42 @@ c.addEventListener("touchend", e => {
       });
 
       let gain = cells.length * 10 * (1 + combo);
-
       score += gain;
-      addScore += gain; 
+      addScore += gain;
+
       let id = gameId;
 
       setTimeout(() => {
 
-      if(id !== gameId) return;
+        if(id !== gameId) return;
 
-      drop();
-
-      // ✅ ★ここ重要：落ち終わるの待つ
-      let wait = setInterval(() => {
-
-        if(fallAnim.length === 0){
-
-          clearInterval(wait);
-
-          fill();
-          drop();
-
-          isBombChain = false;
-
-          setTimeout(() => {
-            
-          if(id === gameId){
-              update();
-            }
-
-          }, 200);
-        }
-
-      }, 16);
-
-    }, 120);
-
-      highlightTimer = 0;
-
-      swipeStart = null;
-      return;
-    }
-  }
-
-  // ✅ 通常スワップ
-  if (Math.abs(dx) + Math.abs(dy) === 1) {
-
-    let x1 = swipeStart.x;
-    let y1 = swipeStart.y;
-
-    // ✅ スワップ先が爆弾でも発動
-    if (board[y][x] === "bomb") {
-
-  isBombChain = true;
-
-  let cells = explode(x, y);
-
-  cells.forEach(b => {
-    board[b.y][b.x] = null;
-  });
-
-  let gain = cells.length * 10 * (1 + combo);
-
-  score += gain;
-  addScore += gain;
-  let id = gameId;
-
-  setTimeout(() => {
-
-    if(id !== gameId) return;
-
-    drop();
-
-    let wait = setInterval(() => {
-
-      if(fallAnim.length === 0){
-
-        clearInterval(wait);
-
-        fill();
         drop();
 
-        isBombChain = false;
+        let wait = setInterval(() => {
 
-        setTimeout(() => {
-          
-        if(id === gameId){
-            update();
+          if(fallAnim.length === 0){
+
+            clearInterval(wait);
+
+            fill();
+            drop();
+
+            isBombChain = false;
+
+            setTimeout(() => {
+              if(id === gameId){
+                update();
+              }
+            }, 200);
           }
 
-        }, 200);
-      }
+        }, 16);
 
-    }, 16);
+      }, 120);
 
-  }, 120);
-
-  return;
-} else {
-
-      swap(x1, y1, x, y);
-
-
-      let result = find();
-
-      if (result.matches.length > 0 && moves > 0) {
-        moves--;
-        document.getElementById("movesNum").innerText = moves;
-        update();
-      } else {
-        swap(x1, y1, x, y);
-      }
-
+      highlightTimer = 0;
+      swipeStart = null;
+      return;
     }
   }
 
@@ -1499,7 +1713,7 @@ let endWait = 0;
 
 function loop(){
 
-  zoom += (1 - zoom) * 0.2;
+  zoom = 1;
 
   if(addScore > 0){
     let step = Math.ceil(addScore * 0.2);
@@ -1509,9 +1723,42 @@ function loop(){
   }
 
   document.getElementById("scoreNum").innerText = Math.floor(displayScore);
+  const feverInfo = document.getElementById("feverInfo");
+  const feverTurnsInfo = document.getElementById("feverTurnsInfo");
+
+  if(feverTurns > 0){
+    feverInfo.innerText = "🔥 FEVER ×1.5";
+    feverTurnsInfo.innerText = "FEVER残り " + feverTurns;
+  }else{
+    feverInfo.innerText = "";
+    feverTurnsInfo.innerText = "";
+  }
 
   draw();
   updateAnim();
+
+  // ===== 🔥 FEVER演出 =====
+  if(feverTurns > 0){
+
+    feverHue += 3;
+    if(feverHue > 360) feverHue = 0;
+
+    feverFlash = 0.4;
+
+    for(let i=0;i<5;i++){
+      particles.push({
+        x: Math.random()*size,
+        y: Math.random()*size,
+        vx: (Math.random()-0.5)*3,
+        vy: (Math.random()-0.5)*3,
+        life: 1
+      });
+    }
+
+  }else{
+    feverFlash *= 0.9;
+  }
+
 
   // ✅ 爆発アニメ更新
   boomAnim.forEach(b => {
