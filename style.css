@@ -884,3 +884,26 @@ animation: bgMove 6s ease infinite;
 button {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* ✅ PCだけ全体を縮小 */
+@media (min-width: 768px){
+
+  #title{
+    transform: scale(0.85);
+    transform-origin: top center;
+  }
+
+}
+
+@media (min-width:768px){
+
+  .rank-item{
+    padding: 8px;
+    font-size: 14px;
+  }
+
+  input{
+    width:180px;
+  }
+
+}
