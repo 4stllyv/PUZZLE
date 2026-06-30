@@ -503,6 +503,32 @@ button:active{
   font-weight: bold;
 }
 
+
+.rank-col .rank-item:not(.gold):not(.silver):not(.bronze){
+  background: rgba(255,255,255,0.2);
+  color: white;
+  font-weight: bold;
+}
+
+
+.rank-col{
+  width: 150px;
+}
+
+/* 全体ラップ */
+.rank-wrap{
+  display:flex;
+  justify-content:center;
+  gap:15px;
+}
+
+/* 列 */
+.rank-col{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
 button {
   background: linear-gradient(45deg, #4facfe, #00f2fe);
   border: none;
