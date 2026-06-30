@@ -459,25 +459,46 @@ function renderRanking(data){
     return;
   }
 
-  arr.slice(0,5).forEach((v,i)=>{
+  // ✅ 左列（1〜5位）
+let leftCol = document.createElement("div");
+leftCol.className = "rank-col";
 
-    let div = document.createElement("div");
+// ✅ 右列（6〜10位）
+let rightCol = document.createElement("div");
+rightCol.className = "rank-col";
 
-    if(i === 0) div.className = "rank-item gold";
-    else if(i === 1) div.className = "rank-item silver";
-    else if(i === 2) div.className = "rank-item bronze";
-    else if(i === 3) div.className = "rank-item fourth";
-    else if(i === 4) div.className = "rank-item fifth";
-    else div.className = "rank-item";
+// ✅ ラッパー
+let wrap = document.createElement("div");
+wrap.className = "rank-wrap";
 
-    let icon = ["🥇","🥈","🥉"][i] || (i+1);
+arr.slice(0,10).forEach((v,i)=>{
 
-    div.innerHTML = `
-      <div class="rank-name">${icon} ${v.name}　${v.score}</div>
-    `;
+  let div = document.createElement("div");
 
-    box.appendChild(div);
-  });
+  if(i === 0) div.className = "rank-item gold";
+  else if(i === 1) div.className = "rank-item silver";
+  else if(i === 2) div.className = "rank-item bronze";
+  else if(i === 3) div.className = "rank-item fourth";
+  else if(i === 4) div.className = "rank-item fifth";
+  else div.className = "rank-item";
+
+  let icon = i < 3 ? ["🥇","🥈","🥉"][i] : (i+1);
+
+  div.innerHTML = `
+    <div class="rank-name">${icon} ${v.name}<br>${v.score}</div>
+  `;
+
+  if(i < 5){
+    leftCol.appendChild(div);
+  }else{
+    rightCol.appendChild(div);
+  }
+});
+
+wrap.appendChild(leftCol);
+wrap.appendChild(rightCol);
+
+box.appendChild(wrap);
 }
 
 // ===== 初期化 =====
